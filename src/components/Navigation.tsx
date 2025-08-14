@@ -6,11 +6,12 @@ export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const menuItems = [
-    { name: 'Home', href: '#home' },
-    { name: 'About', href: '#about' },
-    { name: 'Services', href: '#services' },
-    { name: 'News', href: '#news' },
-    { name: 'Contact', href: '#contact' },
+    { name: 'Home', href: '/' },
+    { name: 'About', href: '/#about' },
+    { name: 'Services', href: '/#services' },
+    { name: 'Testimonials', href: '/testimonials' },
+    { name: 'News', href: '/crypto-news' },
+    { name: 'Contact', href: '/contact' },
   ];
 
   return (
@@ -27,24 +28,38 @@ export const Navigation = () => {
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8">
             {menuItems.map((item) => (
-              <a
-                key={item.name}
-                href={item.href}
-                className="text-foreground hover:text-crypto-blue transition-colors duration-200"
-              >
-                {item.name}
-              </a>
+              item.href.startsWith('/#') ? (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  className="text-foreground hover:text-crypto-blue transition-colors duration-200"
+                >
+                  {item.name}
+                </a>
+              ) : (
+                <a
+                  key={item.name}
+                  href={item.href}
+                  className="text-foreground hover:text-crypto-blue transition-colors duration-200"
+                >
+                  {item.name}
+                </a>
+              )
             ))}
           </div>
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            <Button variant="outline" className="border-crypto-blue text-crypto-blue hover:bg-crypto-blue hover:text-background">
-              Login
-            </Button>
-            <Button className="bg-crypto-gradient hover:opacity-90 text-background">
-              Get Started
-            </Button>
+            <a href="/auth">
+              <Button variant="outline" className="border-crypto-blue text-crypto-blue hover:bg-crypto-blue hover:text-background">
+                Login
+              </Button>
+            </a>
+            <a href="/auth">
+              <Button className="bg-crypto-gradient hover:opacity-90 text-background">
+                Get Started
+              </Button>
+            </a>
           </div>
 
           {/* Mobile Menu Button */}
@@ -74,12 +89,16 @@ export const Navigation = () => {
                 </a>
               ))}
               <div className="flex flex-col space-y-2 pt-4">
-                <Button variant="outline" className="border-crypto-blue text-crypto-blue hover:bg-crypto-blue hover:text-background">
-                  Login
-                </Button>
-                <Button className="bg-crypto-gradient hover:opacity-90 text-background">
-                  Get Started
-                </Button>
+                <a href="/auth">
+                  <Button variant="outline" className="w-full border-crypto-blue text-crypto-blue hover:bg-crypto-blue hover:text-background">
+                    Login
+                  </Button>
+                </a>
+                <a href="/auth">
+                  <Button className="w-full bg-crypto-gradient hover:opacity-90 text-background">
+                    Get Started
+                  </Button>
+                </a>
               </div>
             </div>
           </div>
