@@ -24,6 +24,12 @@ export default {
 				ring: 'hsl(var(--ring))',
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
+				
+				'crypto-gold': 'hsl(var(--crypto-gold))',
+				'crypto-blue': 'hsl(var(--crypto-blue))',
+				'crypto-electric': 'hsl(var(--crypto-electric))',
+				'crypto-purple': 'hsl(var(--crypto-purple))',
+				'crypto-green': 'hsl(var(--crypto-green))',
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))'
@@ -84,11 +90,39 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'glow-pulse': {
+					'0%, 100%': {
+						opacity: '1',
+						filter: 'drop-shadow(0 0 20px hsl(var(--crypto-blue) / 0.6))'
+					},
+					'50%': {
+						opacity: '0.8',
+						filter: 'drop-shadow(0 0 40px hsl(var(--crypto-blue) / 0.8))'
+					}
+				},
+				'crypto-float': {
+					'0%, 100%': { transform: 'translateY(0px) rotate(0deg)' },
+					'50%': { transform: 'translateY(-20px) rotate(180deg)' }
+				},
+				'shimmer': {
+					'0%': { backgroundPosition: '-200% 0' },
+					'100%': { backgroundPosition: '200% 0' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
+				'crypto-float': 'crypto-float 6s ease-in-out infinite',
+				'shimmer': 'shimmer 2s linear infinite'
+			},
+			backgroundImage: {
+				'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+				'crypto-gradient': 'var(--gradient-primary)',
+				'gold-gradient': 'var(--gradient-gold)',
+				'electric-gradient': 'var(--gradient-electric)',
+				'hero-gradient': 'var(--gradient-hero)'
 			}
 		}
 	},

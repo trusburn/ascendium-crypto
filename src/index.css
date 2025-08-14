@@ -2,14 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Crypto Investment Platform Design System */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Core Background & Text */
+    --background: 220 26% 8%;
+    --foreground: 210 40% 98%;
+    
+    /* Crypto Brand Colors */
+    --crypto-gold: 43 96% 56%;
+    --crypto-blue: 217 91% 60%;
+    --crypto-electric: 195 100% 50%;
+    --crypto-purple: 271 81% 56%;
+    --crypto-green: 142 76% 36%;
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%), hsl(271 81% 56%));
+    --gradient-gold: linear-gradient(135deg, hsl(43 96% 56%), hsl(38 92% 50%));
+    --gradient-electric: linear-gradient(135deg, hsl(195 100% 50%), hsl(217 91% 60%));
+    --gradient-hero: linear-gradient(135deg, hsl(220 26% 8%) 0%, hsl(217 91% 60% / 0.1) 50%, hsl(220 26% 8%) 100%);
+    
+    /* Chart Colors */
+    --chart-green: 142 76% 36%;
+    --chart-blue: 217 91% 60%;
+    --chart-purple: 271 81% 56%;
+    --chart-gold: 43 96% 56%;
+    
+    /* Shadows & Glows */
+    --shadow-crypto: 0 0 40px hsl(217 91% 60% / 0.3);
+    --shadow-gold: 0 0 30px hsl(43 96% 56% / 0.4);
+    --shadow-electric: 0 0 25px hsl(195 100% 50% / 0.3);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
@@ -17,24 +44,25 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    /* Updated Design System Colors */
+    --primary: 217 91% 60%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 271 81% 56%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 26% 14%;
+    --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 43 96% 56%;
+    --accent-foreground: 220 26% 8%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 217 32.6% 17.5%;
+    --input: 217 32.6% 17.5%;
+    --ring: 217 91% 60%;
 
     --radius: 0.5rem;
 
