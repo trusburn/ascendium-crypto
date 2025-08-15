@@ -50,9 +50,9 @@ export const Navigation = () => {
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            <a href="/auth">
+            <a href="/dashboard">
               <Button variant="outline" className="border-crypto-blue text-crypto-blue hover:bg-crypto-blue hover:text-background">
-                Login
+                Dashboard
               </Button>
             </a>
             <a href="/auth">
