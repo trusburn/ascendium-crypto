@@ -130,4 +130,75 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Mobile optimizations */
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Touch-friendly interactions */
+  button, a, [role="button"] {
+    touch-action: manipulation;
+  }
+
+  /* Prevent horizontal scroll on mobile */
+  body, html {
+    overflow-x: hidden;
+    width: 100%;
+  }
+}
+
+@layer utilities {
+  /* Mobile-first responsive utilities */
+  .mobile-safe-area {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .mobile-header-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .mobile-bottom-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Touch-friendly sizing */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Bitcoin animation glow */
+  .bitcoin-glow {
+    filter: drop-shadow(0 0 20px rgba(247, 147, 30, 0.5));
+  }
+
+  /* Responsive text scaling */
+  .text-responsive-sm {
+    font-size: clamp(0.875rem, 2.5vw, 1rem);
+  }
+
+  .text-responsive-base {
+    font-size: clamp(1rem, 3vw, 1.125rem);
+  }
+
+  .text-responsive-lg {
+    font-size: clamp(1.125rem, 4vw, 1.5rem);
+  }
+
+  .text-responsive-xl {
+    font-size: clamp(1.5rem, 5vw, 2rem);
+  }
+
+  .text-responsive-2xl {
+    font-size: clamp(2rem, 6vw, 3rem);
+  }
+
+  /* Smooth scrolling for mobile */
+  .smooth-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
 }
