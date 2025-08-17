@@ -22,15 +22,26 @@ const Auth = () => {
   });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
 
-  // Check if user is already authenticated
+  // Check if user is already authenticated and redirect to dashboard
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate('/');
+        navigate('/dashboard');
       }
     };
     checkUser();
+
+    // Listen for auth state changes to redirect after login/signup
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          navigate('/dashboard');
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   const validateForm = (isSignUp: boolean) => {
@@ -107,7 +118,7 @@ const Auth = () => {
           title: "Welcome Back!",
           description: "You have successfully signed in.",
         });
-        navigate('/dashboard');
+        // User will be redirected by the auth state change listener
       }
     } catch (error) {
       toast({
@@ -156,9 +167,10 @@ const Auth = () => {
       } else {
         toast({
           title: "Account Created!",
-          description: "Please check your email to verify your account.",
+          description: "Welcome to CryptoVault! Redirecting to your dashboard...",
         });
-        // Clear form
+        // User will be redirected by the auth state change listener
+        // Clear form for good UX
         setFormData({
           email: '',
           password: '',

@@ -13,6 +13,10 @@ import DashboardTransactions from "./pages/DashboardTransactions";
 import DashboardDeposit from "./pages/DashboardDeposit";
 import DashboardWithdrawal from "./pages/DashboardWithdrawal";
 import DashboardSignals from "./pages/DashboardSignals";
+import DashboardWallet from "./pages/DashboardWallet";
+import DashboardTutorial from "./pages/DashboardTutorial";
+import DashboardProfile from "./pages/DashboardProfile";
+import DashboardSettings from "./pages/DashboardSettings";
 import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -36,6 +40,10 @@ const App = () => (
           <Route path="/dashboard/deposit" element={<ProtectedRoute><DashboardDeposit /></ProtectedRoute>} />
           <Route path="/dashboard/withdrawal" element={<ProtectedRoute><DashboardWithdrawal /></ProtectedRoute>} />
           <Route path="/dashboard/signals" element={<ProtectedRoute><DashboardSignals /></ProtectedRoute>} />
+          <Route path="/dashboard/wallet" element={<ProtectedRoute><DashboardWallet /></ProtectedRoute>} />
+          <Route path="/dashboard/tutorial" element={<ProtectedRoute><DashboardTutorial /></ProtectedRoute>} />
+          <Route path="/dashboard/profile" element={<ProtectedRoute><DashboardProfile /></ProtectedRoute>} />
+          <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPanel /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
