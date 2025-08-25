@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Signal, TrendingUp, Zap } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -16,6 +17,7 @@ interface SignalData {
 }
 
 const DashboardSignals = () => {
+  const { user } = useAuth();
   const [signals, setSignals] = useState<SignalData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,12 +50,52 @@ const DashboardSignals = () => {
     fetchSignals();
   }, []);
 
-  const handlePurchaseSignal = (signalId: string, signalName: string) => {
-    toast({
-      title: "Signal Purchase",
-      description: `Purchasing ${signalName} signal...`,
-    });
-    // In a real app, this would process the payment
+  const handlePurchaseSignal = async (signalId: string, signalName: string) => {
+    if (!user) return;
+
+    try {
+      // Get signal details
+      const { data: signalData, error: signalError } = await supabase
+        .from('signals')
+        .select('price')
+        .eq('id', signalId)
+        .single();
+
+      if (signalError) {
+        toast({
+          title: "Error",
+          description: "Failed to get signal details",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create purchased signal record
+      const { error } = await supabase
+        .from('purchased_signals')
+        .insert({
+          user_id: user.id,
+          signal_id: signalId,
+          price_paid: signalData.price,
+        });
+
+      if (error) {
+        console.error('Error purchasing signal:', error);
+        toast({
+          title: "Error",
+          description: "Failed to purchase signal",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Signal Purchased!",
+        description: `Successfully purchased ${signalName} signal. You can now use it for trading.`,
+      });
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   const getSignalLevel = (multiplier: number) => {

@@ -4,13 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-// Using simple div-based charts to avoid recharts TypeScript issues
+import TradingChart from '@/components/TradingChart';
 import { 
   Wallet, 
   TrendingUp, 
   DollarSign, 
   ArrowUpRight, 
-  ArrowDownLeft,
   Plus,
   Minus
 } from 'lucide-react';
@@ -137,55 +136,8 @@ const Dashboard = () => {
           })}
         </div>
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Balance Growth Chart */}
-          <Card className="bg-muted/50 border-border">
-            <CardHeader>
-              <CardTitle>Balance Growth</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64 bg-crypto-blue/10 rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <TrendingUp className="mx-auto h-12 w-12 text-crypto-blue mb-4" />
-                  <p className="text-crypto-blue font-medium">Balance: ${profile?.net_balance?.toLocaleString() || '0'}</p>
-                  <p className="text-sm text-muted-foreground">Growing steadily</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Portfolio Distribution */}
-          <Card className="bg-muted/50 border-border">
-            <CardHeader>
-              <CardTitle>Portfolio Distribution</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64 flex items-center justify-center">
-                <div className="w-32 h-32 rounded-full bg-crypto-gradient flex items-center justify-center">
-                  <div className="text-center text-background">
-                    <Wallet className="mx-auto h-8 w-8 mb-2" />
-                    <p className="text-sm font-bold">Portfolio</p>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 space-y-2">
-                {portfolioData.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div 
-                        className="w-3 h-3 rounded-full mr-2"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="text-sm">{item.name}</span>
-                    </div>
-                    <span className="text-sm font-medium">{item.value}%</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Trading Chart Section */}
+        <TradingChart />
 
         {/* Quick Actions */}
         <Card className="bg-muted/50 border-border">

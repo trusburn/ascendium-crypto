@@ -95,6 +95,33 @@ export type Database = {
         }
         Relationships: []
       }
+      purchased_signals: {
+        Row: {
+          id: string
+          price_paid: number
+          purchased_at: string
+          signal_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          price_paid?: number
+          purchased_at?: string
+          signal_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          price_paid?: number
+          purchased_at?: string
+          signal_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       signals: {
         Row: {
           created_at: string | null
@@ -119,6 +146,48 @@ export type Database = {
           name?: string
           price?: number
           profit_multiplier?: number
+        }
+        Relationships: []
+      }
+      trades: {
+        Row: {
+          current_profit: number
+          id: string
+          initial_amount: number
+          last_updated: string
+          profit_multiplier: number
+          purchased_signal_id: string
+          signal_id: string
+          started_at: string
+          status: string
+          trade_type: string
+          user_id: string
+        }
+        Insert: {
+          current_profit?: number
+          id?: string
+          initial_amount?: number
+          last_updated?: string
+          profit_multiplier?: number
+          purchased_signal_id: string
+          signal_id: string
+          started_at?: string
+          status?: string
+          trade_type: string
+          user_id: string
+        }
+        Update: {
+          current_profit?: number
+          id?: string
+          initial_amount?: number
+          last_updated?: string
+          profit_multiplier?: number
+          purchased_signal_id?: string
+          signal_id?: string
+          started_at?: string
+          status?: string
+          trade_type?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -190,7 +259,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_trade_profits: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
