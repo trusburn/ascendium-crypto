@@ -11,10 +11,8 @@ import { toast } from '@/hooks/use-toast';
 interface PurchasedSignal {
   id: string;
   signal_id: string;
-  signals: {
-    name: string;
-    profit_multiplier: number;
-  };
+  signal_name: string;
+  profit_multiplier: number;
 }
 
 interface ActiveTrade {
@@ -24,9 +22,7 @@ interface ActiveTrade {
   current_profit: number;
   profit_multiplier: number;
   started_at: string;
-  signals: {
-    name: string;
-  };
+  signal_name: string;
 }
 
 const TradingChart = () => {
@@ -44,40 +40,46 @@ const TradingChart = () => {
 
       try {
         // Fetch purchased signals
-        const { data: signalsData, error: signalsError } = await supabase
+        const { data: purchasedData, error: purchasedError } = await supabase
           .from('purchased_signals')
-          .select(`
-            id,
-            signal_id,
-            signals (
-              name,
-              profit_multiplier
-            )
-          `)
+          .select('id, signal_id')
           .eq('user_id', user.id)
           .eq('status', 'active');
 
-        if (signalsError) {
-          console.error('Error fetching purchased signals:', signalsError);
+        if (purchasedError) {
+          console.error('Error fetching purchased signals:', purchasedError);
           return;
         }
 
-        setPurchasedSignals(signalsData || []);
+        // Fetch signal details for purchased signals
+        const signalIds = purchasedData?.map(p => p.signal_id) || [];
+        const { data: signalsData, error: signalsError } = await supabase
+          .from('signals')
+          .select('id, name, profit_multiplier')
+          .in('id', signalIds);
+
+        if (signalsError) {
+          console.error('Error fetching signals:', signalsError);
+          return;
+        }
+
+        // Merge data
+        const mergedPurchasedSignals = purchasedData?.map(purchased => {
+          const signal = signalsData?.find(s => s.id === purchased.signal_id);
+          return {
+            id: purchased.id,
+            signal_id: purchased.signal_id,
+            signal_name: signal?.name || 'Unknown Signal',
+            profit_multiplier: signal?.profit_multiplier || 1.0,
+          };
+        }) || [];
+
+        setPurchasedSignals(mergedPurchasedSignals);
 
         // Fetch active trades
         const { data: tradesData, error: tradesError } = await supabase
           .from('trades')
-          .select(`
-            id,
-            trade_type,
-            initial_amount,
-            current_profit,
-            profit_multiplier,
-            started_at,
-            signals (
-              name
-            )
-          `)
+          .select('id, trade_type, initial_amount, current_profit, profit_multiplier, started_at, signal_id')
           .eq('user_id', user.id)
           .eq('status', 'active');
 
@@ -86,12 +88,21 @@ const TradingChart = () => {
           return;
         }
 
-        setActiveTrades(tradesData || []);
+        // Merge trade data with signal names
+        const mergedTrades = tradesData?.map(trade => {
+          const signal = signalsData?.find(s => s.id === trade.signal_id);
+          return {
+            ...trade,
+            signal_name: signal?.name || 'Unknown Signal',
+          };
+        }) || [];
+
+        setActiveTrades(mergedTrades);
 
         // Generate chart data based on active trades
         const baseValue = 100;
         const data = Array.from({ length: 50 }, (_, i) => {
-          const totalProfit = tradesData?.reduce((sum, trade) => {
+          const totalProfit = mergedTrades?.reduce((sum, trade) => {
             const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
             const profit = trade.initial_amount * trade.profit_multiplier * (hoursElapsed / 24);
             return sum + profit;
@@ -137,7 +148,7 @@ const TradingChart = () => {
           purchased_signal_id: selectedSignal,
           trade_type: type,
           initial_amount: tradeAmount,
-          profit_multiplier: selectedSignalData.signals.profit_multiplier,
+          profit_multiplier: selectedSignalData.profit_multiplier,
         });
 
       if (error) {
@@ -152,27 +163,34 @@ const TradingChart = () => {
 
       toast({
         title: "Trade Started",
-        description: `${type.toUpperCase()} order placed with ${selectedSignalData.signals.name} signal`,
+        description: `${type.toUpperCase()} order placed with ${selectedSignalData.signal_name} signal`,
       });
 
-      // Refresh data
+      // Refresh trades data
       const { data: tradesData } = await supabase
         .from('trades')
-        .select(`
-          id,
-          trade_type,
-          initial_amount,
-          current_profit,
-          profit_multiplier,
-          started_at,
-          signals (
-            name
-          )
-        `)
+        .select('id, trade_type, initial_amount, current_profit, profit_multiplier, started_at, signal_id')
         .eq('user_id', user.id)
         .eq('status', 'active');
 
-      setActiveTrades(tradesData || []);
+      // Get signal names for trades
+      if (tradesData) {
+        const signalIds = tradesData.map(t => t.signal_id);
+        const { data: signalsData } = await supabase
+          .from('signals')
+          .select('id, name')
+          .in('id', signalIds);
+
+        const mergedTrades = tradesData.map(trade => {
+          const signal = signalsData?.find(s => s.id === trade.signal_id);
+          return {
+            ...trade,
+            signal_name: signal?.name || 'Unknown Signal',
+          };
+        });
+
+        setActiveTrades(mergedTrades);
+      }
     } catch (error) {
       console.error('Error:', error);
     }
@@ -252,7 +270,7 @@ const TradingChart = () => {
                   <SelectContent>
                     {purchasedSignals.map((signal) => (
                       <SelectItem key={signal.id} value={signal.id}>
-                        {signal.signals.name} (×{signal.signals.profit_multiplier})
+                        {signal.signal_name} (×{signal.profit_multiplier})
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -315,12 +333,12 @@ const TradingChart = () => {
                       <Badge className={trade.trade_type === 'buy' ? 'bg-crypto-green/20 text-crypto-green' : 'bg-destructive/20 text-destructive'}>
                         {trade.trade_type.toUpperCase()}
                       </Badge>
-                      <div>
-                        <p className="font-medium">{trade.signals.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          ${trade.initial_amount} • ×{trade.profit_multiplier}
-                        </p>
-                      </div>
+                    <div>
+                      <p className="font-medium">{trade.signal_name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        ${trade.initial_amount} • ×{trade.profit_multiplier}
+                      </p>
+                    </div>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-crypto-green">+${currentProfit.toFixed(2)}</p>

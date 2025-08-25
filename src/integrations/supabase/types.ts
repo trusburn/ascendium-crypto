@@ -120,7 +120,15 @@ export type Database = {
           status?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_purchased_signals_signal"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "signals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       signals: {
         Row: {
@@ -189,7 +197,22 @@ export type Database = {
           trade_type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_trades_purchased_signal"
+            columns: ["purchased_signal_id"]
+            isOneToOne: false
+            referencedRelation: "purchased_signals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_trades_signal"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "signals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transactions: {
         Row: {
