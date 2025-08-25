@@ -64,7 +64,7 @@ const DashboardProfile = () => {
     try {
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, created_at, updated_at')
         .eq('id', user?.id)
         .single();
 
