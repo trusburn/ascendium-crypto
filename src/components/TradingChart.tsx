@@ -219,13 +219,20 @@ const TradingChart = () => {
       // Update profile based on trade type
       const balanceChange = type === 'buy' ? -tradeAmount : tradeAmount;
       const newBalance = currentBalance + balanceChange;
-      const newTotalInvested = type === 'buy' ? currentTotalInvested + tradeAmount : currentTotalInvested;
+      const newTotalInvested = currentTotalInvested + tradeAmount; // Both buy and sell count as invested amount
+      
+      // Calculate total profit from all trades for interest earned
+      const totalProfitFromTrades = activeTrades.reduce((sum, trade) => {
+        const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
+        return sum + (trade.initial_amount * trade.profit_multiplier * (hoursElapsed / 24));
+      }, 0);
 
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           net_balance: newBalance,
           total_invested: newTotalInvested,
+          interest_earned: totalProfitFromTrades,
         })
         .eq('id', user.id);
 
@@ -309,60 +316,112 @@ const TradingChart = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Candlestick Chart */}
-          <div className="h-64 bg-crypto-blue/5 rounded-lg border relative p-4">
-            <div className="flex items-end justify-center h-full space-x-1">
+          {/* Professional Candlestick Chart */}
+          <div className="h-80 bg-slate-950 rounded-lg border relative overflow-hidden">
+            {/* Grid lines */}
+            <div className="absolute inset-0 grid grid-cols-6 grid-rows-5 opacity-20">
+              {Array.from({ length: 30 }).map((_, i) => (
+                <div key={i} className="border border-slate-700/30"></div>
+              ))}
+            </div>
+            
+            {/* Price levels on the right */}
+            <div className="absolute right-2 top-0 h-full flex flex-col justify-between py-4 text-xs text-slate-400">
+              {chartData.length > 0 && (() => {
+                const maxPrice = Math.max(...chartData.map(c => c.high));
+                const minPrice = Math.min(...chartData.map(c => c.low));
+                const levels = [];
+                for (let i = 0; i < 6; i++) {
+                  const price = maxPrice - (i * (maxPrice - minPrice) / 5);
+                  levels.push(price.toFixed(2));
+                }
+                return levels.map((level, i) => (
+                  <span key={i} className="bg-slate-950/80 px-1 rounded">{level}</span>
+                ));
+              })()}
+            </div>
+
+            {/* Candlesticks */}
+            <div className="absolute inset-4 flex items-end justify-between">
               {chartData.map((candle, index) => {
                 const isGreen = candle.close >= candle.open;
                 const bodyHeight = Math.abs(candle.close - candle.open);
                 const maxPrice = Math.max(...chartData.map(c => c.high));
                 const minPrice = Math.min(...chartData.map(c => c.low));
                 const priceRange = maxPrice - minPrice;
+                const chartHeight = 280;
                 
-                const bodyTop = ((maxPrice - Math.max(candle.open, candle.close)) / priceRange) * 200;
-                const bodyHeightPx = (bodyHeight / priceRange) * 200;
-                const wickTop = ((maxPrice - candle.high) / priceRange) * 200;
-                const wickBottom = ((candle.low - minPrice) / priceRange) * 200;
+                // Calculate positions
+                const highY = ((maxPrice - candle.high) / priceRange) * chartHeight;
+                const lowY = ((maxPrice - candle.low) / priceRange) * chartHeight;
+                const openY = ((maxPrice - candle.open) / priceRange) * chartHeight;
+                const closeY = ((maxPrice - candle.close) / priceRange) * chartHeight;
+                
+                const bodyTop = Math.min(openY, closeY);
+                const bodyBottom = Math.max(openY, closeY);
+                const bodyHeightPx = Math.max(1, bodyBottom - bodyTop);
                 
                 return (
-                  <div key={index} className="relative flex-1 max-w-3" style={{ height: '200px' }}>
-                    {/* Top wick */}
+                  <div key={index} className="relative flex-1 max-w-[8px] mx-[1px]" style={{ height: `${chartHeight}px` }}>
+                    {/* High-Low wick */}
                     <div 
-                      className="absolute left-1/2 transform -translate-x-1/2 w-0.5 bg-muted-foreground"
+                      className="absolute left-1/2 transform -translate-x-1/2 w-[1px] bg-slate-500"
                       style={{
-                        top: `${wickTop}px`,
-                        height: `${bodyTop - wickTop}px`
+                        top: `${highY}px`,
+                        height: `${lowY - highY}px`
                       }}
                     />
-                    {/* Body */}
+                    {/* Candle body */}
                     <div 
-                      className={`absolute left-1/2 transform -translate-x-1/2 w-2 ${
-                        isGreen ? 'bg-crypto-green' : 'bg-destructive'
-                      }`}
+                      className={`absolute left-1/2 transform -translate-x-1/2 w-[6px] rounded-sm border transition-all duration-200 hover:scale-110 ${
+                        isGreen 
+                          ? 'bg-emerald-500 border-emerald-400 shadow-emerald-500/20' 
+                          : 'bg-red-500 border-red-400 shadow-red-500/20'
+                      } shadow-sm`}
                       style={{
                         top: `${bodyTop}px`,
-                        height: `${Math.max(1, bodyHeightPx)}px`
+                        height: `${bodyHeightPx}px`
                       }}
                     />
-                    {/* Bottom wick */}
+                    {/* Volume indicator */}
                     <div 
-                      className="absolute left-1/2 transform -translate-x-1/2 w-0.5 bg-muted-foreground"
+                      className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 w-[4px] rounded-t-sm opacity-60 ${
+                        isGreen ? 'bg-emerald-500/40' : 'bg-red-500/40'
+                      }`}
                       style={{
-                        bottom: `${wickBottom}px`,
-                        height: `${200 - bodyTop - bodyHeightPx - wickBottom}px`
+                        height: `${Math.random() * 20 + 5}px`
                       }}
                     />
                   </div>
                 );
               })}
             </div>
-            <div className="absolute top-4 left-4 bg-background/90 backdrop-blur-sm rounded p-2">
-              <div className="text-2xl font-bold text-crypto-blue">
+
+            {/* Price display */}
+            <div className="absolute top-4 left-4 bg-slate-900/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-700">
+              <div className="text-2xl font-bold text-white">
                 ${chartData.length > 0 ? chartData[chartData.length - 1].close.toFixed(2) : '0.00'}
               </div>
-              <div className="text-sm text-crypto-green">
+              <div className="text-sm text-emerald-400 flex items-center">
+                <TrendingUp className="w-3 h-3 mr-1" />
                 +{((totalProfit / 100) * 100).toFixed(2)}%
               </div>
+            </div>
+
+            {/* Trading indicator */}
+            <div className="absolute top-4 right-20 bg-slate-900/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-700">
+              <div className="text-xs text-slate-400">LIVE</div>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mr-2"></div>
+                <span className="text-sm text-white">BTC/USD</span>
+              </div>
+            </div>
+
+            {/* Time labels */}
+            <div className="absolute bottom-1 left-4 right-4 flex justify-between text-xs text-slate-500">
+              {chartData.slice(0, 6).map((candle, i) => (
+                <span key={i}>{candle.time}</span>
+              ))}
             </div>
           </div>
 
