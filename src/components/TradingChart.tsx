@@ -7,7 +7,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { TrendingUp, TrendingDown, Activity, DollarSign } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { ComposedChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 
 interface PurchasedSignal {
   id: string;
@@ -311,31 +310,52 @@ const TradingChart = () => {
         </CardHeader>
         <CardContent>
           {/* Candlestick Chart */}
-          <div className="h-64 bg-crypto-blue/5 rounded-lg border relative">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <XAxis 
-                  dataKey="time" 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                />
-                <YAxis 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
-                />
-                {chartData.map((candle, index) => (
-                  <Bar
-                    key={index}
-                    dataKey={() => candle.high - candle.low}
-                    fill={candle.close >= candle.open ? 'hsl(var(--crypto-green))' : 'hsl(var(--destructive))'}
-                    minPointSize={1}
-                    radius={[1, 1, 1, 1]}
-                  />
-                ))}
-              </ComposedChart>
-            </ResponsiveContainer>
+          <div className="h-64 bg-crypto-blue/5 rounded-lg border relative p-4">
+            <div className="flex items-end justify-center h-full space-x-1">
+              {chartData.map((candle, index) => {
+                const isGreen = candle.close >= candle.open;
+                const bodyHeight = Math.abs(candle.close - candle.open);
+                const maxPrice = Math.max(...chartData.map(c => c.high));
+                const minPrice = Math.min(...chartData.map(c => c.low));
+                const priceRange = maxPrice - minPrice;
+                
+                const bodyTop = ((maxPrice - Math.max(candle.open, candle.close)) / priceRange) * 200;
+                const bodyHeightPx = (bodyHeight / priceRange) * 200;
+                const wickTop = ((maxPrice - candle.high) / priceRange) * 200;
+                const wickBottom = ((candle.low - minPrice) / priceRange) * 200;
+                
+                return (
+                  <div key={index} className="relative flex-1 max-w-3" style={{ height: '200px' }}>
+                    {/* Top wick */}
+                    <div 
+                      className="absolute left-1/2 transform -translate-x-1/2 w-0.5 bg-muted-foreground"
+                      style={{
+                        top: `${wickTop}px`,
+                        height: `${bodyTop - wickTop}px`
+                      }}
+                    />
+                    {/* Body */}
+                    <div 
+                      className={`absolute left-1/2 transform -translate-x-1/2 w-2 ${
+                        isGreen ? 'bg-crypto-green' : 'bg-destructive'
+                      }`}
+                      style={{
+                        top: `${bodyTop}px`,
+                        height: `${Math.max(1, bodyHeightPx)}px`
+                      }}
+                    />
+                    {/* Bottom wick */}
+                    <div 
+                      className="absolute left-1/2 transform -translate-x-1/2 w-0.5 bg-muted-foreground"
+                      style={{
+                        bottom: `${wickBottom}px`,
+                        height: `${200 - bodyTop - bodyHeightPx - wickBottom}px`
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
             <div className="absolute top-4 left-4 bg-background/90 backdrop-blur-sm rounded p-2">
               <div className="text-2xl font-bold text-crypto-blue">
                 ${chartData.length > 0 ? chartData[chartData.length - 1].close.toFixed(2) : '0.00'}
