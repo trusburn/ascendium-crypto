@@ -282,6 +282,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      sync_trading_profits: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       update_trade_profits: {
         Args: Record<PropertyKey, never>
         Returns: undefined
