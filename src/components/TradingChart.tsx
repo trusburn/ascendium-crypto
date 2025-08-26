@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { TrendingUp, TrendingDown, Activity, DollarSign } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { ComposedChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 
 interface PurchasedSignal {
   id: string;
@@ -25,13 +26,21 @@ interface ActiveTrade {
   signal_name: string;
 }
 
+interface CandlestickData {
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
 const TradingChart = () => {
   const { user } = useAuth();
   const [purchasedSignals, setPurchasedSignals] = useState<PurchasedSignal[]>([]);
   const [activeTrades, setActiveTrades] = useState<ActiveTrade[]>([]);
   const [selectedSignal, setSelectedSignal] = useState<string>('');
   const [tradeAmount, setTradeAmount] = useState<number>(100);
-  const [chartData, setChartData] = useState<number[]>([]);
+  const [chartData, setChartData] = useState<CandlestickData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -99,16 +108,32 @@ const TradingChart = () => {
 
         setActiveTrades(mergedTrades);
 
-        // Generate chart data based on active trades
+        // Generate candlestick chart data
         const baseValue = 100;
-        const data = Array.from({ length: 50 }, (_, i) => {
+        const data = Array.from({ length: 30 }, (_, i) => {
           const totalProfit = mergedTrades?.reduce((sum, trade) => {
             const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
             const profit = trade.initial_amount * trade.profit_multiplier * (hoursElapsed / 24);
             return sum + profit;
           }, 0) || 0;
           
-          return baseValue + (totalProfit * (i / 50)) + Math.sin(i * 0.2) * 5;
+          const basePrice = baseValue + (totalProfit * (i / 30));
+          const volatility = 2 + Math.sin(i * 0.1) * 0.5;
+          const open = basePrice + Math.sin(i * 0.3) * volatility;
+          const close = basePrice + Math.sin((i + 1) * 0.3) * volatility;
+          const high = Math.max(open, close) + Math.random() * volatility;
+          const low = Math.min(open, close) - Math.random() * volatility;
+          
+          return {
+            time: new Date(Date.now() - (29 - i) * 60000).toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            }),
+            open: Number(open.toFixed(2)),
+            high: Number(high.toFixed(2)),
+            low: Number(low.toFixed(2)),
+            close: Number(close.toFixed(2)),
+          };
         });
 
         setChartData(data);
@@ -140,6 +165,37 @@ const TradingChart = () => {
     if (!selectedSignalData) return;
 
     try {
+      // Get current profile data
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('net_balance, total_invested')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        toast({
+          title: "Error",
+          description: "Failed to fetch profile data",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const currentBalance = Number(profileData.net_balance || 0);
+      const currentTotalInvested = Number(profileData.total_invested || 0);
+
+      // Check if user has enough balance for buy orders
+      if (type === 'buy' && currentBalance < tradeAmount) {
+        toast({
+          title: "Insufficient Balance",
+          description: "You don't have enough balance for this trade",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create the trade
       const { error } = await supabase
         .from('trades')
         .insert({
@@ -159,6 +215,28 @@ const TradingChart = () => {
           variant: "destructive",
         });
         return;
+      }
+
+      // Update profile based on trade type
+      const balanceChange = type === 'buy' ? -tradeAmount : tradeAmount;
+      const newBalance = currentBalance + balanceChange;
+      const newTotalInvested = type === 'buy' ? currentTotalInvested + tradeAmount : currentTotalInvested;
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          net_balance: newBalance,
+          total_invested: newTotalInvested,
+        })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('Error updating profile:', updateError);
+        toast({
+          title: "Warning",
+          description: "Trade created but profile update failed",
+          variant: "destructive",
+        });
       }
 
       toast({
@@ -232,25 +310,35 @@ const TradingChart = () => {
           </div>
         </CardHeader>
         <CardContent>
-          {/* Chart Area */}
-          <div className="h-64 bg-crypto-blue/5 rounded-lg border relative overflow-hidden">
-            <div className="absolute inset-0 flex items-end justify-center p-4">
-              <div className="flex items-end space-x-1 w-full">
-                {chartData.map((value, index) => (
-                  <div
+          {/* Candlestick Chart */}
+          <div className="h-64 bg-crypto-blue/5 rounded-lg border relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <XAxis 
+                  dataKey="time" 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                />
+                <YAxis 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                />
+                {chartData.map((candle, index) => (
+                  <Bar
                     key={index}
-                    className="bg-crypto-blue/60 rounded-t"
-                    style={{
-                      height: `${Math.max(5, (value / Math.max(...chartData)) * 100)}%`,
-                      width: `${100 / chartData.length}%`,
-                    }}
+                    dataKey={() => candle.high - candle.low}
+                    fill={candle.close >= candle.open ? 'hsl(var(--crypto-green))' : 'hsl(var(--destructive))'}
+                    minPointSize={1}
+                    radius={[1, 1, 1, 1]}
                   />
                 ))}
-              </div>
-            </div>
-            <div className="absolute top-4 left-4">
+              </ComposedChart>
+            </ResponsiveContainer>
+            <div className="absolute top-4 left-4 bg-background/90 backdrop-blur-sm rounded p-2">
               <div className="text-2xl font-bold text-crypto-blue">
-                ${(chartData[chartData.length - 1] || 0).toFixed(2)}
+                ${chartData.length > 0 ? chartData[chartData.length - 1].close.toFixed(2) : '0.00'}
               </div>
               <div className="text-sm text-crypto-green">
                 +{((totalProfit / 100) * 100).toFixed(2)}%

@@ -63,6 +63,10 @@ const Dashboard = () => {
     };
 
     fetchProfile();
+    
+    // Refresh profile data every 5 seconds to sync with trades
+    const interval = setInterval(fetchProfile, 5000);
+    return () => clearInterval(interval);
   }, [user]);
 
   if (loading) {
