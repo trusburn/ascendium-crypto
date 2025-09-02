@@ -263,11 +263,16 @@ const TradingChart = () => {
         return;
       }
 
-      // Sync trading profits to interest_earned and net_balance
+      // Sync trading profits to interest_earned and net_balance immediately after trade
       const { error: syncError } = await supabase.rpc('sync_trading_profits');
       
       if (syncError) {
         console.error('Error syncing trading profits:', syncError);
+        toast({
+          title: "Sync Warning",
+          description: "Trade completed but balance sync failed",
+          variant: "destructive",
+        });
       }
 
 

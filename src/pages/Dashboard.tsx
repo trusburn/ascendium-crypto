@@ -38,6 +38,13 @@ const Dashboard = () => {
       if (!user) return;
 
       try {
+        // First sync trading profits to ensure latest data
+        const { error: syncError } = await supabase.rpc('sync_trading_profits');
+        if (syncError) {
+          console.error('Error syncing trading profits:', syncError);
+        }
+
+        // Then fetch the updated profile data
         const { data, error } = await supabase
           .from('profiles')
           .select('net_balance, total_invested, interest_earned, commissions')
