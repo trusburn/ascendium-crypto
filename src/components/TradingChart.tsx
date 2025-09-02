@@ -47,6 +47,15 @@ const TradingChart = () => {
       if (!user) return;
 
       try {
+        // FORCE sync trading profits first
+        console.log('Syncing trading profits...');
+        const { error: syncError } = await supabase.rpc('sync_trading_profits');
+        if (syncError) {
+          console.error('Sync error:', syncError);
+        } else {
+          console.log('Trading profits synced successfully');
+        }
+
         // Fetch purchased signals
         const { data: purchasedData, error: purchasedError } = await supabase
           .from('purchased_signals')
@@ -112,7 +121,8 @@ const TradingChart = () => {
         const data = Array.from({ length: 30 }, (_, i) => {
           const totalProfit = mergedTrades?.reduce((sum, trade) => {
             const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
-            const profit = trade.initial_amount * trade.profit_multiplier * (hoursElapsed / 24);
+            const daysElapsed = hoursElapsed / 24; // Convert to days
+            const profit = trade.initial_amount * trade.profit_multiplier * daysElapsed;
             return sum + profit;
           }, 0) || 0;
           
@@ -145,14 +155,16 @@ const TradingChart = () => {
 
     fetchData();
     
-    // Update chart every 5 seconds and sync trading profits
+    // Update chart every 5 seconds and sync trading profits AGGRESSIVELY
     const interval = setInterval(async () => {
-      await fetchData();
-      // Sync trading profits with interest_earned and net_balance
-      const { error } = await supabase.rpc('sync_trading_profits');
-      if (error) {
-        console.error('Error syncing trading profits:', error);
+      console.log('Auto-syncing trading profits...');
+      const { error: autoSyncError } = await supabase.rpc('sync_trading_profits');
+      if (autoSyncError) {
+        console.error('Auto-sync error:', autoSyncError);
+      } else {
+        console.log('Auto-sync successful');
       }
+      await fetchData();
     }, 5000);
     return () => clearInterval(interval);
   }, [user]);
@@ -323,7 +335,8 @@ const TradingChart = () => {
 
   const totalProfit = activeTrades.reduce((sum, trade) => {
     const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
-    return sum + (trade.initial_amount * trade.profit_multiplier * (hoursElapsed / 24));
+    const daysElapsed = hoursElapsed / 24; // Convert to days to match database calculation
+    return sum + (trade.initial_amount * trade.profit_multiplier * daysElapsed);
   }, 0);
 
   return (
