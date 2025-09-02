@@ -145,8 +145,15 @@ const TradingChart = () => {
 
     fetchData();
     
-    // Update chart every 5 seconds
-    const interval = setInterval(fetchData, 5000);
+    // Update chart every 5 seconds and sync trading profits
+    const interval = setInterval(async () => {
+      await fetchData();
+      // Sync trading profits with interest_earned and net_balance
+      const { error } = await supabase.rpc('sync_trading_profits');
+      if (error) {
+        console.error('Error syncing trading profits:', error);
+      }
+    }, 5000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -216,23 +223,33 @@ const TradingChart = () => {
         return;
       }
 
-      // Update profile based on trade type
-      const balanceChange = type === 'buy' ? -tradeAmount : tradeAmount;
-      const newBalance = currentBalance + balanceChange;
+      // Update total invested and base_balance for trades
       const newTotalInvested = currentTotalInvested + tradeAmount; // Both buy and sell count as invested amount
       
-      // Calculate total profit from all trades for interest earned
-      const totalProfitFromTrades = activeTrades.reduce((sum, trade) => {
-        const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
-        return sum + (trade.initial_amount * trade.profit_multiplier * (hoursElapsed / 24));
-      }, 0);
+      // For buy orders, reduce base_balance; for sell orders, increase base_balance
+      const balanceChange = type === 'buy' ? -tradeAmount : tradeAmount;
+      
+      // Get current base_balance
+      const { data: currentProfile, error: balanceError } = await supabase
+        .from('profiles')
+        .select('base_balance')
+        .eq('id', user.id)
+        .single();
 
+      if (balanceError) {
+        console.error('Error fetching current base_balance:', balanceError);
+        return;
+      }
+
+      const currentBaseBalance = Number(currentProfile.base_balance || 0);
+      const newBaseBalance = currentBaseBalance + balanceChange;
+
+      // Update base_balance and total_invested
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
-          net_balance: newBalance,
+          base_balance: newBaseBalance,
           total_invested: newTotalInvested,
-          interest_earned: totalProfitFromTrades,
         })
         .eq('id', user.id);
 
@@ -243,7 +260,16 @@ const TradingChart = () => {
           description: "Trade created but profile update failed",
           variant: "destructive",
         });
+        return;
       }
+
+      // Sync trading profits to interest_earned and net_balance
+      const { error: syncError } = await supabase.rpc('sync_trading_profits');
+      
+      if (syncError) {
+        console.error('Error syncing trading profits:', syncError);
+      }
+
 
       toast({
         title: "Trade Started",
