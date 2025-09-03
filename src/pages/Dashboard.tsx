@@ -38,16 +38,19 @@ const Dashboard = () => {
       if (!user) return;
 
       try {
+        console.log('Dashboard: Syncing trading profits...');
         // First sync trading profits to ensure latest data
         const { error: syncError } = await supabase.rpc('sync_trading_profits');
         if (syncError) {
-          console.error('Error syncing trading profits:', syncError);
+          console.error('Dashboard sync error:', syncError);
+        } else {
+          console.log('Dashboard sync successful');
         }
 
         // Then fetch the updated profile data
         const { data, error } = await supabase
           .from('profiles')
-          .select('net_balance, total_invested, interest_earned, commissions')
+          .select('net_balance, total_invested, interest_earned, commissions, base_balance')
           .eq('id', user.id)
           .single();
 
@@ -61,6 +64,7 @@ const Dashboard = () => {
           return;
         }
 
+        console.log('Dashboard profile data:', data);
         setProfile(data);
       } catch (error) {
         console.error('Error:', error);
@@ -71,8 +75,8 @@ const Dashboard = () => {
 
     fetchProfile();
     
-    // Refresh profile data every 5 seconds to sync with trades
-    const interval = setInterval(fetchProfile, 5000);
+    // Refresh profile data every 3 seconds for faster updates
+    const interval = setInterval(fetchProfile, 3000);
     return () => clearInterval(interval);
   }, [user]);
 
