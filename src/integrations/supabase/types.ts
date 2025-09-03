@@ -17,24 +17,21 @@ export type Database = {
       admin_settings: {
         Row: {
           id: string
-          setting_key: string
-          setting_value: Json | null
-          updated_at: string
-          updated_by: string | null
+          key: string
+          updated_at: string | null
+          value: Json | null
         }
         Insert: {
           id?: string
-          setting_key: string
-          setting_value?: Json | null
-          updated_at?: string
-          updated_by?: string | null
+          key: string
+          updated_at?: string | null
+          value?: Json | null
         }
         Update: {
           id?: string
-          setting_key?: string
-          setting_value?: Json | null
-          updated_at?: string
-          updated_by?: string | null
+          key?: string
+          updated_at?: string | null
+          value?: Json | null
         }
         Relationships: []
       }
@@ -271,23 +268,20 @@ export type Database = {
       user_roles: {
         Row: {
           created_at: string
-          created_by: string | null
           id: string
-          role: Database["public"]["Enums"]["user_role"]
+          role: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          created_by?: string | null
           id?: string
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: string
           user_id: string
         }
         Update: {
           created_at?: string
-          created_by?: string | null
           id?: string
-          role?: Database["public"]["Enums"]["user_role"]
+          role?: string
           user_id?: string
         }
         Relationships: []
@@ -338,7 +332,7 @@ export type Database = {
         Returns: Database["public"]["Enums"]["user_role"]
       }
       is_admin: {
-        Args: { check_user_id: string }
+        Args: { check_user_id?: string }
         Returns: boolean
       }
       sync_trading_profits: {
