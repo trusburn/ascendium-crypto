@@ -54,14 +54,13 @@ const DashboardSignals = () => {
     if (!user) return;
 
     try {
-      // Get signal details
-      const { data: signalData, error: signalError } = await supabase
-        .from('signals')
-        .select('price')
-        .eq('id', signalId)
-        .single();
+      // Get signal details and user balance
+      const [signalResponse, profileResponse] = await Promise.all([
+        supabase.from('signals').select('price').eq('id', signalId).single(),
+        supabase.from('profiles').select('net_balance').eq('id', user.id).single()
+      ]);
 
-      if (signalError) {
+      if (signalResponse.error) {
         toast({
           title: "Error",
           description: "Failed to get signal details",
@@ -70,31 +69,58 @@ const DashboardSignals = () => {
         return;
       }
 
-      // Create purchased signal record
-      const { error } = await supabase
-        .from('purchased_signals')
-        .insert({
-          user_id: user.id,
-          signal_id: signalId,
-          price_paid: signalData.price,
-        });
-
-      if (error) {
-        console.error('Error purchasing signal:', error);
+      if (profileResponse.error) {
         toast({
-          title: "Error",
-          description: "Failed to purchase signal",
+          title: "Error", 
+          description: "Failed to get profile data",
           variant: "destructive",
         });
         return;
+      }
+
+      const signalPrice = signalResponse.data.price;
+      const userBalance = profileResponse.data.net_balance;
+
+      // Check if user has sufficient balance
+      if (userBalance < signalPrice) {
+        toast({
+          title: "Insufficient Balance",
+          description: `You need $${signalPrice} to purchase this signal. Current balance: $${userBalance}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Deduct from balance and create purchase record
+      const newBalance = userBalance - signalPrice;
+      
+      const [balanceUpdate, purchaseInsert] = await Promise.all([
+        supabase.from('profiles').update({ 
+          net_balance: newBalance,
+          base_balance: newBalance 
+        }).eq('id', user.id),
+        supabase.from('purchased_signals').insert({
+          user_id: user.id,
+          signal_id: signalId,
+          price_paid: signalPrice,
+        })
+      ]);
+
+      if (balanceUpdate.error || purchaseInsert.error) {
+        throw balanceUpdate.error || purchaseInsert.error;
       }
 
       toast({
         title: "Signal Purchased!",
         description: `Successfully purchased ${signalName} signal. You can now use it for trading.`,
       });
-    } catch (error) {
-      console.error('Error:', error);
+    } catch (error: any) {
+      console.error('Error purchasing signal:', error);
+      toast({
+        title: "Purchase failed",
+        description: error.message || "Failed to purchase signal. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 

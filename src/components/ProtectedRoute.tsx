@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRouteProps) => {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -18,14 +18,12 @@ export const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRoutePr
         return;
       }
       
-      // For admin routes, check if user has admin role
-      // This would be extended with proper role checking from database
-      if (adminOnly) {
-        // For now, we'll use a simple check - in real app this would check user role from database
-        // You can implement role-based access control here
+      if (adminOnly && !isAdmin) {
+        navigate('/dashboard');
+        return;
       }
     }
-  }, [user, loading, navigate, adminOnly]);
+  }, [user, loading, navigate, adminOnly, isAdmin]);
 
   if (loading) {
     return (

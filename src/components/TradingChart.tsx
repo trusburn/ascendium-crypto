@@ -186,7 +186,7 @@ const TradingChart = () => {
       // Get current profile data
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('net_balance, total_invested')
+        .select('net_balance, base_balance, total_invested')
         .eq('id', user.id)
         .single();
 
@@ -201,13 +201,14 @@ const TradingChart = () => {
       }
 
       const currentBalance = Number(profileData.net_balance || 0);
+      const currentBaseBalance = Number(profileData.base_balance || 0);
       const currentTotalInvested = Number(profileData.total_invested || 0);
 
-      // Check if user has enough balance for buy orders
-      if (type === 'buy' && currentBalance < tradeAmount) {
+      // Check if user has enough balance for both buy and sell orders
+      if (currentBalance < tradeAmount) {
         toast({
           title: "Insufficient Balance",
-          description: "You don't have enough balance for this trade",
+          description: `You need $${tradeAmount} to place this trade. Current balance: $${currentBalance}`,
           variant: "destructive",
         });
         return;
@@ -235,31 +236,16 @@ const TradingChart = () => {
         return;
       }
 
-      // Update total invested and base_balance for trades
-      const newTotalInvested = currentTotalInvested + tradeAmount; // Both buy and sell count as invested amount
-      
-      // For buy orders, reduce base_balance; for sell orders, increase base_balance
-      const balanceChange = type === 'buy' ? -tradeAmount : tradeAmount;
-      
-      // Get current base_balance
-      const { data: currentProfile, error: balanceError } = await supabase
-        .from('profiles')
-        .select('base_balance')
-        .eq('id', user.id)
-        .single();
+      // Update balances - deduct from both net_balance and base_balance
+      const newNetBalance = currentBalance - tradeAmount;
+      const newBaseBalance = currentBaseBalance - tradeAmount;
+      const newTotalInvested = currentTotalInvested + tradeAmount;
 
-      if (balanceError) {
-        console.error('Error fetching current base_balance:', balanceError);
-        return;
-      }
-
-      const currentBaseBalance = Number(currentProfile.base_balance || 0);
-      const newBaseBalance = currentBaseBalance + balanceChange;
-
-      // Update base_balance and total_invested
+      // Update profile with new balances
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
+          net_balance: newNetBalance,
           base_balance: newBaseBalance,
           total_invested: newTotalInvested,
         })
@@ -269,13 +255,13 @@ const TradingChart = () => {
         console.error('Error updating profile:', updateError);
         toast({
           title: "Warning",
-          description: "Trade created but profile update failed",
+          description: "Trade created but balance update failed",
           variant: "destructive",
         });
         return;
       }
 
-      // Sync trading profits to interest_earned and net_balance immediately after trade
+      // Sync trading profits to update interest_earned and net_balance with profits
       const { error: syncError } = await supabase.rpc('sync_trading_profits');
       
       if (syncError) {
@@ -286,7 +272,6 @@ const TradingChart = () => {
           variant: "destructive",
         });
       }
-
 
       toast({
         title: "Trade Started",
