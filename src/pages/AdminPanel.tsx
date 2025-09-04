@@ -47,7 +47,7 @@ interface AdminUser {
 }
 
 export default function AdminPanel() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [deposits, setDeposits] = useState<Deposit[]>([]);
@@ -355,6 +355,15 @@ export default function AdminPanel() {
       setAddingAdmin(false);
     }
   };
+
+  // Show loading while authentication is being determined
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   // If not logged in, redirect to auth
   if (!user) {
