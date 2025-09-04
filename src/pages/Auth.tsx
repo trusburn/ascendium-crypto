@@ -22,21 +22,45 @@ const Auth = () => {
   });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
 
-  // Check if user is already authenticated and redirect to dashboard
+  // Check if user is already authenticated and redirect accordingly
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate('/dashboard');
+        // Check if user is admin
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .eq('role', 'admin')
+          .single();
+          
+        if (roleData) {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
+        }
       }
     };
     checkUser();
 
     // Listen for auth state changes to redirect after login/signup
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
-          navigate('/dashboard');
+          // Check if user is admin
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .eq('role', 'admin')
+            .single();
+            
+          if (roleData) {
+            navigate('/admin');
+          } else {
+            navigate('/dashboard');
+          }
         }
       }
     );
