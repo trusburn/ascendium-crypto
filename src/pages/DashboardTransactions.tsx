@@ -13,6 +13,9 @@ interface Transaction {
   amount: number;
   description: string;
   created_at: string;
+  status?: string;
+  crypto_type?: string;
+  wallet_address?: string;
 }
 
 const DashboardTransactions = () => {
@@ -25,25 +28,88 @@ const DashboardTransactions = () => {
       if (!user) return;
 
       try {
-        const { data, error } = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+        // Fetch from all three sources
+        const [transactionsRes, depositsRes, withdrawalsRes] = await Promise.all([
+          supabase
+            .from('transactions')
+            .select('*')
+            .eq('user_id', user.id),
+          supabase
+            .from('deposits')
+            .select('*')
+            .eq('user_id', user.id),
+          supabase
+            .from('withdrawals')
+            .select('*')
+            .eq('user_id', user.id)
+        ]);
 
-        if (error) {
-          console.error('Error fetching transactions:', error);
-          toast({
-            title: "Error",
-            description: "Failed to load transactions",
-            variant: "destructive",
-          });
-          return;
+        if (transactionsRes.error) {
+          console.error('Error fetching transactions:', transactionsRes.error);
+        }
+        
+        if (depositsRes.error) {
+          console.error('Error fetching deposits:', depositsRes.error);
+        }
+        
+        if (withdrawalsRes.error) {
+          console.error('Error fetching withdrawals:', withdrawalsRes.error);
         }
 
-        setTransactions(data || []);
+        // Combine all transactions
+        const allTransactions: Transaction[] = [];
+
+        // Add regular transactions
+        if (transactionsRes.data) {
+          allTransactions.push(...transactionsRes.data.map(tx => ({
+            id: tx.id,
+            type: tx.type,
+            amount: Number(tx.amount),
+            description: tx.description || tx.type,
+            created_at: tx.created_at,
+            status: 'completed'
+          })));
+        }
+
+        // Add deposits
+        if (depositsRes.data) {
+          allTransactions.push(...depositsRes.data.map(deposit => ({
+            id: deposit.id,
+            type: 'deposit',
+            amount: Number(deposit.amount),
+            description: `${deposit.crypto_type} Deposit`,
+            created_at: deposit.created_at,
+            status: deposit.status,
+            crypto_type: deposit.crypto_type,
+            wallet_address: deposit.wallet_address
+          })));
+        }
+
+        // Add withdrawals
+        if (withdrawalsRes.data) {
+          allTransactions.push(...withdrawalsRes.data.map(withdrawal => ({
+            id: withdrawal.id,
+            type: 'withdrawal',
+            amount: Number(withdrawal.amount),
+            description: `${withdrawal.crypto_type} Withdrawal`,
+            created_at: withdrawal.created_at,
+            status: withdrawal.status,
+            crypto_type: withdrawal.crypto_type,
+            wallet_address: withdrawal.wallet_address
+          })));
+        }
+
+        // Sort by date (newest first)
+        allTransactions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        setTransactions(allTransactions);
       } catch (error) {
         console.error('Error:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load transactions",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
@@ -71,6 +137,23 @@ const DashboardTransactions = () => {
         return <Badge variant="destructive">Withdrawal</Badge>;
       default:
         return <Badge variant="secondary">{type}</Badge>;
+    }
+  };
+
+  const getStatusBadge = (status?: string) => {
+    if (!status) return null;
+    
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return <Badge variant="secondary" className="bg-orange-500/20 text-orange-500 border-orange-500">Pending</Badge>;
+      case 'approved':
+        return <Badge className="bg-crypto-green/20 text-crypto-green border-crypto-green">Approved</Badge>;
+      case 'rejected':
+        return <Badge variant="destructive">Rejected</Badge>;
+      case 'completed':
+        return <Badge className="bg-crypto-green/20 text-crypto-green border-crypto-green">Completed</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
@@ -115,13 +198,19 @@ const DashboardTransactions = () => {
                         {getTransactionIcon(transaction.type)}
                       </div>
                       <div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 flex-wrap">
                           <h4 className="font-medium">{transaction.description || transaction.type}</h4>
                           {getTransactionBadge(transaction.type)}
+                          {getStatusBadge(transaction.status)}
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(transaction.created_at).toLocaleDateString()}
-                        </p>
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          <p>{new Date(transaction.created_at).toLocaleDateString()}</p>
+                          {transaction.crypto_type && transaction.wallet_address && (
+                            <p className="truncate max-w-xs">
+                              {transaction.crypto_type} • {transaction.wallet_address.slice(0, 6)}...{transaction.wallet_address.slice(-4)}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
