@@ -356,49 +356,32 @@ export default function AdminPanel() {
     }
   };
 
-  // If not logged in or not admin, show login form
-  if (!user || !isAdmin) {
+  // If not logged in, redirect to auth
+  if (!user) {
+    navigate('/auth');
+    return null;
+  }
+
+  // If logged in but not admin, show access denied
+  if (!isAdmin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Admin Login</CardTitle>
-            <CardDescription>Enter admin credentials to access the panel</CardDescription>
+            <CardTitle>Access Denied</CardTitle>
+            <CardDescription>You don't have admin privileges to access this panel</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="admin-email">Email</Label>
-              <Input
-                id="admin-email"
-                type="email"
-                value={adminEmail}
-                onChange={(e) => setAdminEmail(e.target.value)}
-                placeholder="paneladmin@gmail.com"
-              />
-            </div>
-            <div>
-              <Label htmlFor="admin-password">Password</Label>
-              <Input
-                id="admin-password"
-                type="password"
-                value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
-                placeholder="Password"
-              />
+            <div className="text-center text-muted-foreground">
+              <p>Current user: {user.email}</p>
+              <p>Role: User (Admin access required)</p>
             </div>
             <Button 
-              onClick={handleAdminLogin} 
-              disabled={loggingIn || !adminEmail || !adminPassword}
+              onClick={() => navigate('/dashboard')}
               className="w-full"
             >
-              {loggingIn && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Login as Admin
+              Back to Dashboard
             </Button>
-            <div className="text-center">
-              <Button variant="link" onClick={() => navigate('/dashboard')} className="text-sm">
-                Back to User Dashboard
-              </Button>
-            </div>
           </CardContent>
         </Card>
       </div>
@@ -420,6 +403,7 @@ export default function AdminPanel() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Admin Panel</h1>
             <p className="text-muted-foreground">Manage users, deposits, withdrawals, and system settings</p>
+            <p className="text-sm text-primary font-medium">Logged in as: {user.email}</p>
           </div>
           <Button variant="outline" onClick={() => { supabase.auth.signOut(); navigate('/'); }}>
             Logout
