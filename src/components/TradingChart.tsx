@@ -94,6 +94,7 @@ const TradingChart = () => {
         setPurchasedSignals(mergedPurchasedSignals);
 
         // Fetch active trades
+        console.log('📈 Fetching active trades...');
         const { data: tradesData, error: tradesError } = await supabase
           .from('trades')
           .select('id, trade_type, initial_amount, current_profit, profit_multiplier, started_at, signal_id')
@@ -101,9 +102,11 @@ const TradingChart = () => {
           .eq('status', 'active');
 
         if (tradesError) {
-          console.error('Error fetching trades:', tradesError);
+          console.error('❌ Error fetching trades:', tradesError);
           return;
         }
+
+        console.log('💹 Raw trades data:', tradesData);
 
         // Merge trade data with signal names
         const mergedTrades = tradesData?.map(trade => {
@@ -114,6 +117,7 @@ const TradingChart = () => {
           };
         }) || [];
 
+        console.log('🔄 Merged trades with signals:', mergedTrades);
         setActiveTrades(mergedTrades);
 
         // Generate candlestick chart data
@@ -157,14 +161,19 @@ const TradingChart = () => {
     
     // Update chart every 1 second and sync trading profits AGGRESSIVELY for live profit updates
     const interval = setInterval(async () => {
-      console.log('Auto-syncing trading profits...');
-      const { error: autoSyncError } = await supabase.rpc('sync_trading_profits');
-      if (autoSyncError) {
-        console.error('Auto-sync error:', autoSyncError);
-      } else {
-        console.log('Auto-sync successful');
+      console.log('🔄 Auto-syncing trading profits...');
+      try {
+        const { error: autoSyncError } = await supabase.rpc('sync_trading_profits');
+        if (autoSyncError) {
+          console.error('❌ Auto-sync error:', autoSyncError);
+        } else {
+          console.log('✅ Auto-sync successful - profits updated');
+        }
+        console.log('📊 Fetching updated trade data...');
+        await fetchData();
+      } catch (error) {
+        console.error('💥 Sync interval error:', error);
       }
-      await fetchData();
     }, 1000);
     return () => clearInterval(interval);
   }, [user]);

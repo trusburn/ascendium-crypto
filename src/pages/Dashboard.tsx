@@ -38,13 +38,13 @@ const Dashboard = () => {
       if (!user) return;
 
       try {
-        console.log('Dashboard: Syncing trading profits...');
+        console.log('💰 Dashboard: Syncing trading profits...');
         // First sync trading profits to ensure latest data
         const { error: syncError } = await supabase.rpc('sync_trading_profits');
         if (syncError) {
-          console.error('Dashboard sync error:', syncError);
+          console.error('❌ Dashboard sync error:', syncError);
         } else {
-          console.log('Dashboard sync successful');
+          console.log('✅ Dashboard sync successful');
         }
 
         // Then fetch the updated profile data
@@ -64,7 +64,7 @@ const Dashboard = () => {
           return;
         }
 
-        console.log('Dashboard profile data:', data);
+        console.log('💳 Dashboard profile data:', data);
         setProfile(data);
       } catch (error) {
         console.error('Error:', error);
