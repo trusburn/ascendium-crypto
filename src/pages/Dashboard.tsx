@@ -75,8 +75,8 @@ const Dashboard = () => {
 
     fetchProfile();
     
-    // Refresh profile data every 3 seconds for faster updates
-    const interval = setInterval(fetchProfile, 3000);
+    // Refresh profile data every 1 second for live profit updates
+    const interval = setInterval(fetchProfile, 1000);
     return () => clearInterval(interval);
   }, [user]);
 

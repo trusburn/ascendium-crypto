@@ -155,7 +155,7 @@ const TradingChart = () => {
 
     fetchData();
     
-    // Update chart every 5 seconds and sync trading profits AGGRESSIVELY
+    // Update chart every 1 second and sync trading profits AGGRESSIVELY for live profit updates
     const interval = setInterval(async () => {
       console.log('Auto-syncing trading profits...');
       const { error: autoSyncError } = await supabase.rpc('sync_trading_profits');
@@ -165,7 +165,7 @@ const TradingChart = () => {
         console.log('Auto-sync successful');
       }
       await fetchData();
-    }, 5000);
+    }, 1000);
     return () => clearInterval(interval);
   }, [user]);
 
