@@ -193,7 +193,17 @@ export default function AdminPanel() {
 
   const handleApproveDeposit = async (depositId: string) => {
     try {
-      const { error } = await supabase
+      // First get the deposit details
+      const { data: deposit, error: fetchError } = await supabase
+        .from('deposits')
+        .select('*')
+        .eq('id', depositId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update deposit status
+      const { error: updateError } = await supabase
         .from('deposits')
         .update({ 
           status: 'approved',
@@ -202,11 +212,27 @@ export default function AdminPanel() {
         })
         .eq('id', depositId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Credit the amount to user's net_balance
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('net_balance')
+        .eq('id', deposit.user_id)
+        .single();
+
+      const newBalance = (profile?.net_balance || 0) + deposit.amount;
+      
+      const { error: profileUpdateError } = await supabase
+        .from('profiles')
+        .update({ net_balance: newBalance })
+        .eq('id', deposit.user_id);
+
+      if (profileUpdateError) throw profileUpdateError;
 
       toast({
         title: "Success",
-        description: "Deposit approved successfully"
+        description: `Deposit of $${deposit.amount} approved and credited to user balance`
       });
 
       fetchAllData();
@@ -249,7 +275,28 @@ export default function AdminPanel() {
 
   const handleApproveWithdrawal = async (withdrawalId: string) => {
     try {
-      const { error } = await supabase
+      // First get the withdrawal details
+      const { data: withdrawal, error: fetchError } = await supabase
+        .from('withdrawals')
+        .select('*')
+        .eq('id', withdrawalId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Check if user has sufficient balance
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('net_balance')
+        .eq('id', withdrawal.user_id)
+        .single();
+
+      if (!profile || profile.net_balance < withdrawal.amount) {
+        throw new Error('Insufficient balance for withdrawal');
+      }
+
+      // Update withdrawal status
+      const { error: updateError } = await supabase
         .from('withdrawals')
         .update({ 
           status: 'approved',
@@ -258,11 +305,21 @@ export default function AdminPanel() {
         })
         .eq('id', withdrawalId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Deduct the amount from user's net_balance
+      const newBalance = profile.net_balance - withdrawal.amount;
+      
+      const { error: profileUpdateError } = await supabase
+        .from('profiles')
+        .update({ net_balance: newBalance })
+        .eq('id', withdrawal.user_id);
+
+      if (profileUpdateError) throw profileUpdateError;
 
       toast({
         title: "Success",
-        description: "Withdrawal approved successfully"
+        description: `Withdrawal of $${withdrawal.amount} approved and deducted from user balance`
       });
 
       fetchAllData();
