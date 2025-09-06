@@ -71,7 +71,7 @@ const adminNavItems = [
 ];
 
 function AdminSidebar() {
-  const { collapsed } = useSidebar();
+  const { open, setOpen } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -89,13 +89,13 @@ function AdminSidebar() {
   };
 
   return (
-    <Sidebar className={collapsed ? "w-14" : "w-64"} collapsible>
+    <Sidebar className={!open ? "w-14" : "w-64"} collapsible="icon">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="px-3 py-2">
             <div className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
-              {!collapsed && <span className="font-semibold">Admin Panel</span>}
+              {open && <span className="font-semibold">Admin Panel</span>}
             </div>
           </SidebarGroupLabel>
           
@@ -110,7 +110,7 @@ function AdminSidebar() {
                   >
                     <NavLink to={item.url} className="flex items-center gap-3 px-3 py-2">
                       <item.icon className="h-4 w-4" />
-                      {!collapsed && (
+                      {open && (
                         <div className="flex-1">
                           <div className="font-medium">{item.title}</div>
                           <div className="text-xs text-muted-foreground">{item.description}</div>
@@ -126,7 +126,7 @@ function AdminSidebar() {
         
         {/* User info and logout at bottom */}
         <div className="mt-auto p-3 border-t">
-          {!collapsed && (
+          {open && (
             <div className="mb-3 text-xs text-muted-foreground">
               <div className="font-medium">Logged in as:</div>
               <div className="truncate">{user?.email}</div>
@@ -139,7 +139,7 @@ function AdminSidebar() {
             className="w-full"
           >
             <LogOut className="h-4 w-4" />
-            {!collapsed && <span className="ml-2">Logout</span>}
+            {open && <span className="ml-2">Logout</span>}
           </Button>
         </div>
       </SidebarContent>
@@ -149,7 +149,7 @@ function AdminSidebar() {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   return (
-    <SidebarProvider defaultOpen={true}>
+    <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         <AdminSidebar />
         

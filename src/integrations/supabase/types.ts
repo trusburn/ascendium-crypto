@@ -80,6 +80,7 @@ export type Database = {
           created_at: string | null
           id: string
           interest_earned: number | null
+          is_frozen: boolean
           location: string | null
           net_balance: number | null
           phone: string | null
@@ -95,6 +96,7 @@ export type Database = {
           created_at?: string | null
           id: string
           interest_earned?: number | null
+          is_frozen?: boolean
           location?: string | null
           net_balance?: number | null
           phone?: string | null
@@ -110,6 +112,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           interest_earned?: number | null
+          is_frozen?: boolean
           location?: string | null
           net_balance?: number | null
           phone?: string | null

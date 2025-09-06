@@ -61,11 +61,11 @@ export default function AdminUsers() {
         .from('user_roles')
         .select('user_id, role');
 
-      // Merge profiles with roles
-      const usersWithRoles = profilesData?.map(profile => ({
+      // Merge profiles with roles  
+      const usersWithRoles = profilesData ? profilesData.map(profile => ({
         ...profile,
         role: rolesData?.find(role => role.user_id === profile.id)?.role || 'user'
-      })) || [];
+      })) : [];
 
       setUsers(usersWithRoles);
     } catch (error) {
@@ -84,7 +84,7 @@ export default function AdminUsers() {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ is_frozen: !currentFrozenState })
+        .update({ is_frozen: !currentFrozenState } as any)
         .eq('id', userId);
 
       if (error) throw error;
