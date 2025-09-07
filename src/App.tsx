@@ -19,11 +19,12 @@ import DashboardProfile from "./pages/DashboardProfile";
 import DashboardSettings from "./pages/DashboardSettings";
 import AdminPanel from "./pages/AdminPanel";
 import AdminOverview from "./pages/admin/AdminOverview";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminDeposits from "./pages/admin/AdminDeposits";
-import AdminWithdrawals from "./pages/admin/AdminWithdrawals";
-import AdminManagement from "./pages/admin/AdminManagement";
-import AdminSettings from "./pages/admin/AdminSettings";
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminContent from './pages/admin/AdminContent';
+import AdminDeposits from './pages/admin/AdminDeposits';
+import AdminWithdrawals from './pages/admin/AdminWithdrawals';
+import AdminManagement from './pages/admin/AdminManagement';
+import AdminSettings from './pages/admin/AdminSettings';
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminLayout } from "./components/AdminLayout";
@@ -60,6 +61,7 @@ const App = () => (
           <Route path="/admin/deposits" element={<ProtectedRoute adminOnly><AdminLayout><AdminDeposits /></AdminLayout></ProtectedRoute>} />
           <Route path="/admin/withdrawals" element={<ProtectedRoute adminOnly><AdminLayout><AdminWithdrawals /></AdminLayout></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminLayout><AdminUsers /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin/content" element={<ProtectedRoute adminOnly><AdminLayout><AdminContent /></AdminLayout></ProtectedRoute>} />
           <Route path="/admin/management" element={<ProtectedRoute adminOnly><AdminLayout><AdminManagement /></AdminLayout></ProtectedRoute>} />
           <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminLayout><AdminSettings /></AdminLayout></ProtectedRoute>} />
           

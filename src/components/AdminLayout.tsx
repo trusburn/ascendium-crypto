@@ -57,6 +57,12 @@ const adminNavItems = [
     description: 'User management and controls'
   },
   { 
+    title: 'Content', 
+    url: '/admin/content', 
+    icon: Menu,
+    description: 'Manage site content and branding'
+  },
+  { 
     title: 'Admin Management', 
     url: '/admin/management', 
     icon: Shield,
