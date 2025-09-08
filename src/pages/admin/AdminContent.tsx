@@ -75,10 +75,19 @@ export default function AdminContent() {
         .select('*')
         .or('key.like.content_%,key.like.color_%');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      console.log('Loaded admin settings:', data);
 
       const contentData: Record<string, any> = { ...defaultContent };
-      const colorData: Record<string, string> = { ...colors };
+      const colorData: Record<string, string> = { 
+        primary: '217 91% 60%',
+        secondary: '271 81% 56%',
+        accent: '43 96% 56%'
+      };
 
       data?.forEach((item) => {
         if (item.key.startsWith('content_')) {
@@ -90,13 +99,16 @@ export default function AdminContent() {
         }
       });
 
+      console.log('Parsed content:', contentData);
+      console.log('Parsed colors:', colorData);
+
       setContent(contentData);
       setColors(colorData);
     } catch (error) {
       console.error('Error loading content:', error);
       toast({
         title: "Error",
-        description: "Failed to load content settings",
+        description: `Failed to load content settings: ${error.message}`,
         variant: "destructive"
       });
     }
@@ -121,11 +133,22 @@ export default function AdminContent() {
 
       const allItems = [...contentItems, ...colorItems];
 
-      for (const item of allItems) {
-        await supabase
+      // Process items in batches for better performance
+      const batchSize = 10;
+      for (let i = 0; i < allItems.length; i += batchSize) {
+        const batch = allItems.slice(i, i + batchSize);
+        const { error } = await supabase
           .from('admin_settings')
-          .upsert(item, { onConflict: 'key' });
+          .upsert(batch, { onConflict: 'key' });
+        
+        if (error) {
+          console.error('Batch upsert error:', error);
+          throw error;
+        }
       }
+
+      // Reload content to reflect changes
+      await loadContent();
 
       toast({
         title: "Success",
@@ -135,7 +158,7 @@ export default function AdminContent() {
       console.error('Error saving content:', error);
       toast({
         title: "Error",
-        description: "Failed to save content settings",
+        description: `Failed to save content settings: ${error.message}`,
         variant: "destructive"
       });
     }
