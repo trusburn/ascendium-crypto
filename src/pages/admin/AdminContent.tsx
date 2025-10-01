@@ -59,6 +59,8 @@ export default function AdminContent() {
     accent: '43 96% 56%'
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [newContentKey, setNewContentKey] = useState('');
   const [newContentValue, setNewContentValue] = useState('');
   const [newContentCategory, setNewContentCategory] = useState('general');
@@ -69,7 +71,21 @@ export default function AdminContent() {
   }, []);
 
   const loadContent = async () => {
+    setIsInitialLoading(true);
     try {
+      // First verify user is authenticated and is an admin
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('No active session');
+        toast({
+          title: "Authentication Required",
+          description: "Please log in as an admin to access this page",
+          variant: "destructive"
+        });
+        setIsInitialLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('admin_settings')
         .select('*')
@@ -104,19 +120,32 @@ export default function AdminContent() {
 
       setContent(contentData);
       setColors(colorData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading content:', error);
       toast({
         title: "Error",
-        description: `Failed to load content settings: ${error.message}`,
+        description: error.message || "Failed to load content settings",
         variant: "destructive"
       });
+    } finally {
+      setIsInitialLoading(false);
     }
   };
 
+
   const saveContent = async () => {
-    setIsLoading(true);
+    setIsSaving(true);
     try {
+      // Verify authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in as an admin to save changes",
+          variant: "destructive"
+        });
+        return;
+      }
       // Save content items
       const contentItems = Object.entries(content).map(([key, value]) => ({
         key: `content_${key}`,
@@ -154,15 +183,16 @@ export default function AdminContent() {
         title: "Success",
         description: "Content settings saved successfully"
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving content:', error);
       toast({
         title: "Error",
-        description: `Failed to save content settings: ${error.message}`,
+        description: error.message || "Failed to save content settings",
         variant: "destructive"
       });
+    } finally {
+      setIsSaving(false);
     }
-    setIsLoading(false);
   };
 
   const updateContent = (key: string, value: string) => {
@@ -210,6 +240,17 @@ export default function AdminContent() {
     }
   };
 
+  if (isInitialLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading content settings...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -219,9 +260,9 @@ export default function AdminContent() {
             Manage site content, branding, and visual elements
           </p>
         </div>
-        <Button onClick={saveContent} disabled={isLoading} className="w-full sm:w-auto">
+        <Button onClick={saveContent} disabled={isSaving} className="w-full sm:w-auto">
           <Save className="mr-2 h-4 w-4" />
-          {isLoading ? 'Saving...' : 'Save Changes'}
+          {isSaving ? 'Saving...' : 'Save Changes'}
         </Button>
       </div>
 
