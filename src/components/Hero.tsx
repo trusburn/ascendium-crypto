@@ -1,8 +1,11 @@
 import { Button } from '@/components/ui/button';
 import { Bitcoin3D } from './Bitcoin3D';
 import { ArrowRight, TrendingUp, Shield, Zap } from 'lucide-react';
+import { useAdminContent } from '@/hooks/useAdminContent';
 
 export const Hero = () => {
+  const { content } = useAdminContent();
+  
   return (
     <section id="home" className="min-h-screen flex items-center justify-center relative overflow-hidden">
       {/* Background Effects */}
@@ -17,16 +20,11 @@ export const Hero = () => {
             <div className="space-y-4">
               <h1 className="text-5xl lg:text-7xl font-bold">
                 <span className="bg-crypto-gradient bg-clip-text text-transparent">
-                  Invest in
-                </span>
-                <br />
-                <span className="text-foreground">
-                  Crypto Future
+                  {content.heroTitle}
                 </span>
               </h1>
               <p className="text-xl text-muted-foreground max-w-2xl">
-                Join the revolution of digital finance. Grow your wealth with our advanced trading algorithms, 
-                expert signals, and secure investment platform designed for the crypto era.
+                {content.heroSubtitle}
               </p>
             </div>
 
@@ -34,15 +32,15 @@ export const Hero = () => {
             <div className="grid grid-cols-3 gap-6 py-8">
               <div className="text-center">
                 <div className="text-3xl font-bold text-crypto-gold">$2.5B+</div>
-                <div className="text-sm text-muted-foreground">Trading Volume</div>
+                <div className="text-sm text-muted-foreground">{content.tradingVolumeLabel}</div>
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-crypto-blue">150K+</div>
-                <div className="text-sm text-muted-foreground">Active Users</div>
+                <div className="text-sm text-muted-foreground">{content.activeUsersLabel}</div>
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-crypto-green">99.9%</div>
-                <div className="text-sm text-muted-foreground">Uptime</div>
+                <div className="text-sm text-muted-foreground">{content.uptimeLabel}</div>
               </div>
             </div>
 

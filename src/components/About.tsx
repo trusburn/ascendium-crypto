@@ -1,7 +1,9 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Coins, TrendingUp, Shield, Users } from 'lucide-react';
+import { useAdminContent } from '@/hooks/useAdminContent';
 
 export const About = () => {
+  const { content } = useAdminContent();
   const features = [
     {
       icon: Coins,
@@ -31,7 +33,7 @@ export const About = () => {
         <div className="text-center mb-16">
           <h2 className="text-4xl lg:text-5xl font-bold mb-6">
             <span className="bg-crypto-gradient bg-clip-text text-transparent">
-              About CryptoVault
+              {content.aboutTitle}
             </span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">

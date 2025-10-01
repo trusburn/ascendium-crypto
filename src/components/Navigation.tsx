@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
+import { useAdminContent } from '@/hooks/useAdminContent';
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { content } = useAdminContent();
 
   const menuItems = [
     { name: 'Home', href: '/' },
@@ -21,7 +23,7 @@ export const Navigation = () => {
           {/* Logo */}
           <div className="flex items-center space-x-2">
             <div className="text-2xl font-bold bg-crypto-gradient bg-clip-text text-transparent">
-              ₿ CryptoVault
+              ₿ {content.siteTitle}
             </div>
           </div>
 

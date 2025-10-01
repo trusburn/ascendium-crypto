@@ -1,8 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, Star, Zap, TrendingUp, Shield, BarChart3 } from 'lucide-react';
+import { useAdminContent } from '@/hooks/useAdminContent';
 
 export const Services = () => {
+  const { content } = useAdminContent();
   const plans = [
     {
       name: "Starter",
@@ -84,7 +86,7 @@ export const Services = () => {
         <div className="text-center mb-16">
           <h2 className="text-4xl lg:text-5xl font-bold mb-6">
             <span className="bg-crypto-gradient bg-clip-text text-transparent">
-              Our Services
+              {content.servicesTitle}
             </span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
