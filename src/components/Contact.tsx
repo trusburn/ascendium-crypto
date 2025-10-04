@@ -6,27 +6,27 @@ import { MapPin, Phone, Mail, Send } from 'lucide-react';
 
 export const Contact = () => {
   return (
-    <section id="contact" className="py-20 bg-muted/50">
+    <section id="contact" className="py-12 sm:py-16 lg:py-20 bg-muted/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl lg:text-5xl font-bold mb-6">
+        <div className="text-center mb-8 sm:mb-12 lg:mb-16">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6">
             <span className="bg-crypto-gradient bg-clip-text text-transparent">
               Get in Touch
             </span>
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto">
             Ready to start your crypto investment journey? Have questions about our platform? 
             Our expert team is here to help you succeed.
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-16">
+        <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16">
           {/* Contact Form */}
           <Card className="bg-background/50 backdrop-blur-sm border border-border/50">
-            <CardContent className="p-8">
-              <h3 className="text-2xl font-bold text-foreground mb-6">Send Us a Message</h3>
-              <form className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
+            <CardContent className="p-4 sm:p-6 lg:p-8">
+              <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">Send Us a Message</h3>
+              <form className="space-y-4 sm:space-y-6">
+                <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground">First Name</label>
                     <Input placeholder="Enter your first name" className="border-border/50 focus:border-crypto-blue" />
@@ -65,10 +65,10 @@ export const Contact = () => {
           </Card>
 
           {/* Contact Information */}
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             <div>
-              <h3 className="text-2xl font-bold text-foreground mb-6">Contact Information</h3>
-              <div className="space-y-6">
+              <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">Contact Information</h3>
+              <div className="space-y-4 sm:space-y-6">
                 <div className="flex items-start space-x-4">
                   <div className="w-12 h-12 bg-crypto-gradient rounded-full flex items-center justify-center flex-shrink-0">
                     <Mail className="h-6 w-6 text-background" />

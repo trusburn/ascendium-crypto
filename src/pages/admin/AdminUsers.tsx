@@ -133,15 +133,15 @@ export default function AdminUsers() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 p-2 sm:p-0">
       <div>
-        <h2 className="text-2xl font-bold">User Management</h2>
-        <p className="text-muted-foreground">Manage user accounts and permissions</p>
+        <h2 className="text-xl sm:text-2xl font-bold">User Management</h2>
+        <p className="text-sm text-muted-foreground">Manage user accounts and permissions</p>
       </div>
 
       {/* Search and Stats */}
-      <div className="flex flex-col md:flex-row gap-4 justify-between">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col gap-4">
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             placeholder="Search users..."
@@ -151,8 +151,8 @@ export default function AdminUsers() {
           />
         </div>
         
-        <div className="flex gap-4 text-sm text-muted-foreground">
-          <span>Total Users: {users.length}</span>
+        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+          <span>Total: {users.length}</span>
           <span>Active: {users.filter(u => !u.is_frozen).length}</span>
           <span>Frozen: {users.filter(u => u.is_frozen).length}</span>
         </div>
@@ -161,85 +161,89 @@ export default function AdminUsers() {
       {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Users ({filteredUsers.length})</CardTitle>
-          <CardDescription>Manage user accounts and access controls</CardDescription>
+          <CardTitle className="text-lg sm:text-xl">Users ({filteredUsers.length})</CardTitle>
+          <CardDescription className="text-sm">Manage user accounts and access controls</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Balance</TableHead>
-                  <TableHead>Invested</TableHead>
-                  <TableHead>Earnings</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{user.username || 'No username'}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {user.id.substring(0, 8)}...
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                        <Shield className="h-3 w-3 mr-1" />
-                        {user.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-mono">
-                      {formatCurrency(user.net_balance)}
-                    </TableCell>
-                    <TableCell className="font-mono">
-                      {formatCurrency(user.total_invested)}
-                    </TableCell>
-                    <TableCell className="font-mono text-green-600">
-                      {formatCurrency(user.interest_earned)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={user.is_frozen ? 'destructive' : 'default'}>
-                        {user.is_frozen ? 'Frozen' : 'Active'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatDate(user.created_at)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => setSelectedUser(user)}
-                        >
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={user.is_frozen ? "default" : "destructive"}
-                          onClick={() => toggleUserFreeze(user.id, user.is_frozen || false)}
-                        >
-                          {user.is_frozen ? (
-                            <UserCheck className="h-3 w-3" />
-                          ) : (
-                            <UserX className="h-3 w-3" />
-                          )}
-                        </Button>
-                      </div>
-                    </TableCell>
+        <CardContent className="p-2 sm:p-6">
+          <div className="overflow-x-auto -mx-2 sm:mx-0">
+            <div className="inline-block min-w-full align-middle">
+              <Table className="min-w-[800px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">User</TableHead>
+                    <TableHead className="whitespace-nowrap">Role</TableHead>
+                    <TableHead className="whitespace-nowrap">Balance</TableHead>
+                    <TableHead className="whitespace-nowrap hidden sm:table-cell">Invested</TableHead>
+                    <TableHead className="whitespace-nowrap hidden md:table-cell">Earnings</TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap hidden lg:table-cell">Joined</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium text-sm">{user.username || 'No username'}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {user.id.substring(0, 8)}...
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} className="text-xs">
+                          <Shield className="h-3 w-3 mr-1" />
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {formatCurrency(user.net_balance)}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm hidden sm:table-cell">
+                        {formatCurrency(user.total_invested)}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm text-green-600 hidden md:table-cell">
+                        {formatCurrency(user.interest_earned)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={user.is_frozen ? 'destructive' : 'default'} className="text-xs whitespace-nowrap">
+                          {user.is_frozen ? 'Frozen' : 'Active'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm hidden lg:table-cell">{formatDate(user.created_at)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setSelectedUser(user)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={user.is_frozen ? "default" : "destructive"}
+                            onClick={() => toggleUserFreeze(user.id, user.is_frozen || false)}
+                            className="h-8 w-8 p-0"
+                          >
+                            {user.is_frozen ? (
+                              <UserCheck className="h-3 w-3" />
+                            ) : (
+                              <UserX className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
             
             {filteredUsers.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-muted-foreground text-sm">
                 {searchTerm ? 'No users found matching your search.' : 'No users found.'}
               </div>
             )}
@@ -250,55 +254,59 @@ export default function AdminUsers() {
       {/* User Details Modal */}
       {selectedUser && (
         <Card>
-          <CardHeader>
-            <CardTitle>User Details: {selectedUser.username || 'No username'}</CardTitle>
-            <CardDescription>Detailed information and account history</CardDescription>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setSelectedUser(null)}
-              className="w-fit"
-            >
-              Close
-            </Button>
+          <CardHeader className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <CardTitle className="text-lg sm:text-xl">User Details: {selectedUser.username || 'No username'}</CardTitle>
+                <CardDescription className="text-sm">Detailed information and account history</CardDescription>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setSelectedUser(null)}
+                className="w-fit"
+              >
+                Close
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="text-sm font-medium text-muted-foreground">User ID</label>
-                <div className="font-mono text-sm">{selectedUser.id}</div>
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground">User ID</label>
+                <div className="font-mono text-xs sm:text-sm break-all">{selectedUser.id}</div>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Username</label>
-                <div>{selectedUser.username || 'Not set'}</div>
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground">Username</label>
+                <div className="text-sm">{selectedUser.username || 'Not set'}</div>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Role</label>
-                <Badge variant={selectedUser.role === 'admin' ? 'default' : 'secondary'}>
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground">Role</label>
+                <Badge variant={selectedUser.role === 'admin' ? 'default' : 'secondary'} className="text-xs">
                   {selectedUser.role}
                 </Badge>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Status</label>
-                <Badge variant={selectedUser.is_frozen ? 'destructive' : 'default'}>
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground">Status</label>
+                <Badge variant={selectedUser.is_frozen ? 'destructive' : 'default'} className="text-xs">
                   {selectedUser.is_frozen ? 'Frozen' : 'Active'}
                 </Badge>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Net Balance</label>
-                <div className="font-mono">{formatCurrency(selectedUser.net_balance)}</div>
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground">Net Balance</label>
+                <div className="font-mono text-sm">{formatCurrency(selectedUser.net_balance)}</div>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Total Invested</label>
-                <div className="font-mono">{formatCurrency(selectedUser.total_invested)}</div>
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground">Total Invested</label>
+                <div className="font-mono text-sm">{formatCurrency(selectedUser.total_invested)}</div>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Interest Earned</label>
-                <div className="font-mono text-green-600">{formatCurrency(selectedUser.interest_earned)}</div>
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground">Interest Earned</label>
+                <div className="font-mono text-sm text-green-600">{formatCurrency(selectedUser.interest_earned)}</div>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Joined Date</label>
-                <div>{formatDate(selectedUser.created_at)}</div>
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground">Joined Date</label>
+                <div className="text-sm">{formatDate(selectedUser.created_at)}</div>
               </div>
             </div>
           </CardContent>
