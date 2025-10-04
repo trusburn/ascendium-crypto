@@ -6,16 +6,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdminSettings } from '@/hooks/useAdminSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowDownLeft, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const DashboardWithdrawal = () => {
   const { user } = useAuth();
+  const { settings, isLoading: settingsLoading } = useAdminSettings();
   const [amount, setAmount] = useState('');
   const [cryptoType, setCryptoType] = useState('bitcoin');
   const [walletAddress, setWalletAddress] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const minWithdrawal = settings.minimum_withdrawal;
 
   const cryptoOptions = [
     { value: 'bitcoin', label: 'Bitcoin (BTC)' },
@@ -34,10 +38,10 @@ const DashboardWithdrawal = () => {
       return;
     }
 
-    if (parseFloat(amount) < 50) {
+    if (parseFloat(amount) < minWithdrawal) {
       toast({
         title: "Minimum Amount Required",
-        description: "Minimum withdrawal amount is $50",
+        description: `Minimum withdrawal amount is $${minWithdrawal}`,
         variant: "destructive",
       });
       return;
@@ -109,7 +113,7 @@ const DashboardWithdrawal = () => {
                 <Input
                   id="amount"
                   type="number"
-                  placeholder="Enter amount (minimum $50)"
+                  placeholder={`Enter amount (minimum $${settingsLoading ? '...' : minWithdrawal})`}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   className="border-border/50 focus:border-crypto-blue"
@@ -162,7 +166,7 @@ const DashboardWithdrawal = () => {
               <Button
                 onClick={handleSubmitWithdrawal}
                 className="w-full bg-destructive hover:bg-destructive/90"
-                disabled={loading || !amount || !walletAddress || parseFloat(amount) < 50}
+                disabled={loading || !amount || !walletAddress || parseFloat(amount) < minWithdrawal}
               >
                 {loading ? "Submitting..." : "Request Withdrawal"}
               </Button>
@@ -186,7 +190,7 @@ const DashboardWithdrawal = () => {
                 <div>
                   <h4 className="font-medium">Minimum Amount</h4>
                   <p className="text-sm text-muted-foreground">
-                    $50 USD minimum withdrawal amount
+                    ${settingsLoading ? '...' : minWithdrawal} USD minimum withdrawal amount
                   </p>
                 </div>
 

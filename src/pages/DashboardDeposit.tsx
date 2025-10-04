@@ -6,18 +6,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useAdminSettings } from '@/hooks/useAdminSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowUpRight, Copy, CheckCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const DashboardDeposit = () => {
   const { user } = useAuth();
+  const { settings, isLoading: settingsLoading } = useAdminSettings();
   const [amount, setAmount] = useState('');
   const [cryptoType, setCryptoType] = useState('bitcoin');
   const [loading, setLoading] = useState(false);
   const [walletAddress, setWalletAddress] = useState('');
   const [profitCalculated, setProfitCalculated] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const minDeposit = settings.minimum_deposit;
 
   const cryptoOptions = [
     { value: 'bitcoin', label: 'Bitcoin (BTC)', rate: 0.15 },
@@ -41,6 +45,15 @@ const DashboardDeposit = () => {
       toast({
         title: "Invalid Amount",
         description: "Please enter a valid deposit amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (parseFloat(amount) < minDeposit) {
+      toast({
+        title: "Minimum Deposit Required",
+        description: `Minimum deposit amount is $${minDeposit}`,
         variant: "destructive",
       });
       return;
@@ -270,7 +283,7 @@ const DashboardDeposit = () => {
               <div className="mt-6 p-4 bg-crypto-gold/10 border border-crypto-gold/30 rounded-lg">
                 <h4 className="font-medium text-crypto-gold mb-2">Important Notes:</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Minimum deposit: $100</li>
+                  <li>• Minimum deposit: ${settingsLoading ? '...' : minDeposit}</li>
                   <li>• All deposits require admin approval</li>
                   <li>• Profits are calculated monthly</li>
                   <li>• Contact support for large deposits</li>
