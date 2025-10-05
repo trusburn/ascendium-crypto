@@ -14,7 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Search, Check, X, TrendingUp } from "lucide-react";
 
 interface Deposit {
@@ -290,20 +289,19 @@ export default function AdminDeposits() {
           <CardDescription>Manage deposit requests and approvals</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <ScrollArea className="w-full">
-            <div className="w-full min-w-[800px]">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="whitespace-nowrap">User ID</TableHead>
-                    <TableHead className="whitespace-nowrap">Amount</TableHead>
-                    <TableHead className="whitespace-nowrap">Crypto Type</TableHead>
-                    <TableHead className="whitespace-nowrap">Wallet Address</TableHead>
-                    <TableHead className="whitespace-nowrap">Status</TableHead>
-                    <TableHead className="whitespace-nowrap">Created</TableHead>
-                    <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
+          <div className="w-full overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <Table className="min-w-[800px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="whitespace-nowrap">User ID</TableHead>
+                  <TableHead className="whitespace-nowrap">Amount</TableHead>
+                  <TableHead className="whitespace-nowrap">Crypto Type</TableHead>
+                  <TableHead className="whitespace-nowrap">Wallet Address</TableHead>
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
+                  <TableHead className="whitespace-nowrap">Created</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
                 {filteredDeposits.map((deposit) => (
                   <TableRow key={deposit.id}>
@@ -356,12 +354,10 @@ export default function AdminDeposits() {
                 ))}
               </TableBody>
             </Table>
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+          </div>
           
           {filteredDeposits.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-muted-foreground px-6">
               {searchTerm || statusFilter !== 'all' 
                 ? 'No deposits found matching your criteria.' 
                 : 'No deposits found.'
