@@ -289,9 +289,9 @@ export default function AdminWithdrawals() {
           <CardTitle>Withdrawals ({filteredWithdrawals.length})</CardTitle>
           <CardDescription>Manage withdrawal requests and approvals</CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table className="min-w-[800px]">
+        <CardContent>
+          <div className="overflow-x-auto -mx-6 px-6">
+            <Table className="min-w-full">
               <TableHeader>
                 <TableRow>
                   <TableHead className="whitespace-nowrap">User ID</TableHead>
