@@ -289,18 +289,18 @@ export default function AdminWithdrawals() {
           <CardTitle>Withdrawals ({filteredWithdrawals.length})</CardTitle>
           <CardDescription>Manage withdrawal requests and approvals</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="min-w-[800px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>User ID</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Crypto Type</TableHead>
-                  <TableHead>Wallet Address</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="whitespace-nowrap">User ID</TableHead>
+                  <TableHead className="whitespace-nowrap">Amount</TableHead>
+                  <TableHead className="whitespace-nowrap">Crypto Type</TableHead>
+                  <TableHead className="whitespace-nowrap">Wallet Address</TableHead>
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
+                  <TableHead className="whitespace-nowrap">Created</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
