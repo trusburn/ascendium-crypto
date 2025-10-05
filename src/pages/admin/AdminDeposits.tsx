@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Search, Check, X, TrendingUp } from "lucide-react";
 
 interface Deposit {
@@ -288,20 +289,21 @@ export default function AdminDeposits() {
           <CardTitle>Deposits ({filteredDeposits.length})</CardTitle>
           <CardDescription>Manage deposit requests and approvals</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto -mx-6 px-6">
-            <Table className="min-w-full">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="whitespace-nowrap">User ID</TableHead>
-                  <TableHead className="whitespace-nowrap">Amount</TableHead>
-                  <TableHead className="whitespace-nowrap">Crypto Type</TableHead>
-                  <TableHead className="whitespace-nowrap">Wallet Address</TableHead>
-                  <TableHead className="whitespace-nowrap">Status</TableHead>
-                  <TableHead className="whitespace-nowrap">Created</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+        <CardContent className="p-0">
+          <ScrollArea className="w-full">
+            <div className="w-full min-w-[800px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">User ID</TableHead>
+                    <TableHead className="whitespace-nowrap">Amount</TableHead>
+                    <TableHead className="whitespace-nowrap">Crypto Type</TableHead>
+                    <TableHead className="whitespace-nowrap">Wallet Address</TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Created</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {filteredDeposits.map((deposit) => (
                   <TableRow key={deposit.id}>
@@ -354,16 +356,18 @@ export default function AdminDeposits() {
                 ))}
               </TableBody>
             </Table>
-            
-            {filteredDeposits.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                {searchTerm || statusFilter !== 'all' 
-                  ? 'No deposits found matching your criteria.' 
-                  : 'No deposits found.'
-                }
-              </div>
-            )}
-          </div>
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+          
+          {filteredDeposits.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              {searchTerm || statusFilter !== 'all' 
+                ? 'No deposits found matching your criteria.' 
+                : 'No deposits found.'
+              }
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

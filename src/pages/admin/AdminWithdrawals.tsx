@@ -14,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Search, Check, X, TrendingDown } from "lucide-react";
 
 interface Withdrawal {
@@ -289,20 +290,21 @@ export default function AdminWithdrawals() {
           <CardTitle>Withdrawals ({filteredWithdrawals.length})</CardTitle>
           <CardDescription>Manage withdrawal requests and approvals</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto -mx-6 px-6">
-            <Table className="min-w-full">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="whitespace-nowrap">User ID</TableHead>
-                  <TableHead className="whitespace-nowrap">Amount</TableHead>
-                  <TableHead className="whitespace-nowrap">Crypto Type</TableHead>
-                  <TableHead className="whitespace-nowrap">Wallet Address</TableHead>
-                  <TableHead className="whitespace-nowrap">Status</TableHead>
-                  <TableHead className="whitespace-nowrap">Created</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+        <CardContent className="p-0">
+          <ScrollArea className="w-full">
+            <div className="w-full min-w-[800px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">User ID</TableHead>
+                    <TableHead className="whitespace-nowrap">Amount</TableHead>
+                    <TableHead className="whitespace-nowrap">Crypto Type</TableHead>
+                    <TableHead className="whitespace-nowrap">Wallet Address</TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Created</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {filteredWithdrawals.map((withdrawal) => (
                   <TableRow key={withdrawal.id}>
@@ -355,16 +357,18 @@ export default function AdminWithdrawals() {
                 ))}
               </TableBody>
             </Table>
-            
-            {filteredWithdrawals.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                {searchTerm || statusFilter !== 'all' 
-                  ? 'No withdrawals found matching your criteria.' 
-                  : 'No withdrawals found.'
-                }
-              </div>
-            )}
-          </div>
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+          
+          {filteredWithdrawals.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              {searchTerm || statusFilter !== 'all' 
+                ? 'No withdrawals found matching your criteria.' 
+                : 'No withdrawals found.'
+              }
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
