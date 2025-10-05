@@ -290,8 +290,14 @@ export default function AdminWithdrawals() {
           <CardDescription>Manage withdrawal requests and approvals</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="w-full overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <Table className="min-w-[800px]">
+          <div 
+            className="w-full overflow-x-auto" 
+            style={{ 
+              WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-x pan-y'
+            }}
+          >
+            <Table className="min-w-[900px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="whitespace-nowrap">User ID</TableHead>
@@ -326,13 +332,14 @@ export default function AdminWithdrawals() {
                     <TableCell className="text-sm">
                       {formatDate(withdrawal.created_at)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" style={{ minWidth: '120px' }}>
                       {withdrawal.status === 'pending' && (
-                        <div className="flex justify-end gap-1">
+                        <div className="flex justify-end gap-1 whitespace-nowrap">
                           <Button
                             size="sm"
                             variant="default"
                             onClick={() => handleApproveWithdrawal(withdrawal.id)}
+                            className="shrink-0"
                           >
                             <Check className="h-3 w-3" />
                           </Button>
@@ -340,13 +347,14 @@ export default function AdminWithdrawals() {
                             size="sm"
                             variant="destructive"
                             onClick={() => handleRejectWithdrawal(withdrawal.id)}
+                            className="shrink-0"
                           >
                             <X className="h-3 w-3" />
                           </Button>
                         </div>
                       )}
                       {withdrawal.status !== 'pending' && (
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
                           {withdrawal.approved_at && formatDate(withdrawal.approved_at)}
                         </span>
                       )}

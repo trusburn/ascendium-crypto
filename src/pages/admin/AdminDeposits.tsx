@@ -289,8 +289,14 @@ export default function AdminDeposits() {
           <CardDescription>Manage deposit requests and approvals</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="w-full overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <Table className="min-w-[800px]">
+          <div 
+            className="w-full overflow-x-auto" 
+            style={{ 
+              WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-x pan-y'
+            }}
+          >
+            <Table className="min-w-[900px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="whitespace-nowrap">User ID</TableHead>
@@ -325,13 +331,14 @@ export default function AdminDeposits() {
                     <TableCell className="text-sm">
                       {formatDate(deposit.created_at)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" style={{ minWidth: '120px' }}>
                       {deposit.status === 'pending' && (
-                        <div className="flex justify-end gap-1">
+                        <div className="flex justify-end gap-1 whitespace-nowrap">
                           <Button
                             size="sm"
                             variant="default"
                             onClick={() => handleApproveDeposit(deposit.id)}
+                            className="shrink-0"
                           >
                             <Check className="h-3 w-3" />
                           </Button>
@@ -339,13 +346,14 @@ export default function AdminDeposits() {
                             size="sm"
                             variant="destructive"
                             onClick={() => handleRejectDeposit(deposit.id)}
+                            className="shrink-0"
                           >
                             <X className="h-3 w-3" />
                           </Button>
                         </div>
                       )}
                       {deposit.status !== 'pending' && (
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
                           {deposit.approved_at && formatDate(deposit.approved_at)}
                         </span>
                       )}

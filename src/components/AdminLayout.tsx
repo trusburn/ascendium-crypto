@@ -171,7 +171,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </header>
           
           {/* Main content */}
-          <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-x-hidden">
+          <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-x-auto">
             {children}
           </main>
         </div>
