@@ -288,80 +288,89 @@ export default function AdminDeposits() {
           <CardTitle>Deposits ({filteredDeposits.length})</CardTitle>
           <CardDescription>Manage deposit requests and approvals</CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-hidden">
           <div 
-            className="w-full overflow-x-auto" 
+            className="w-full overflow-x-auto overflow-y-visible"
             style={{ 
               WebkitOverflowScrolling: 'touch',
-              touchAction: 'pan-x pan-y'
+              scrollbarWidth: 'thin',
+              msOverflowStyle: 'auto'
             }}
           >
-            <Table className="min-w-[900px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="whitespace-nowrap">User ID</TableHead>
-                  <TableHead className="whitespace-nowrap">Amount</TableHead>
-                  <TableHead className="whitespace-nowrap">Crypto Type</TableHead>
-                  <TableHead className="whitespace-nowrap">Wallet Address</TableHead>
-                  <TableHead className="whitespace-nowrap">Status</TableHead>
-                  <TableHead className="whitespace-nowrap">Created</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredDeposits.map((deposit) => (
-                  <TableRow key={deposit.id}>
-                    <TableCell className="font-mono text-sm">
-                      {deposit.user_id.substring(0, 8)}...
-                    </TableCell>
-                    <TableCell className="font-mono font-bold">
-                      {formatCurrency(deposit.amount)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{deposit.crypto_type}</Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs max-w-32 truncate">
-                      {deposit.wallet_address}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(deposit.status)}>
-                        {deposit.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {formatDate(deposit.created_at)}
-                    </TableCell>
-                    <TableCell className="text-right" style={{ minWidth: '120px' }}>
-                      {deposit.status === 'pending' && (
-                        <div className="flex justify-end gap-1 whitespace-nowrap">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => handleApproveDeposit(deposit.id)}
-                            className="shrink-0"
-                          >
-                            <Check className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleRejectDeposit(deposit.id)}
-                            className="shrink-0"
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      )}
-                      {deposit.status !== 'pending' && (
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {deposit.approved_at && formatDate(deposit.approved_at)}
-                        </span>
-                      )}
-                    </TableCell>
+            <div className="inline-block min-w-full">
+              <Table className="w-full" style={{ minWidth: '900px' }}>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">User ID</TableHead>
+                    <TableHead className="whitespace-nowrap">Amount</TableHead>
+                    <TableHead className="whitespace-nowrap">Crypto Type</TableHead>
+                    <TableHead className="whitespace-nowrap">Wallet Address</TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Created</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredDeposits.map((deposit) => (
+                    <TableRow key={deposit.id}>
+                      <TableCell className="font-mono text-sm">
+                        {deposit.user_id.substring(0, 8)}...
+                      </TableCell>
+                      <TableCell className="font-mono font-bold">
+                        {formatCurrency(deposit.amount)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{deposit.crypto_type}</Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs max-w-32 truncate">
+                        {deposit.wallet_address}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusVariant(deposit.status)}>
+                          {deposit.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {formatDate(deposit.created_at)}
+                      </TableCell>
+                      <TableCell className="text-right" style={{ minWidth: '140px', paddingRight: '16px' }}>
+                        {deposit.status === 'pending' && (
+                          <div className="flex justify-end gap-2 whitespace-nowrap">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => handleApproveDeposit(deposit.id)}
+                              className="shrink-0 h-8 px-3"
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              <span className="text-xs">Approve</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleRejectDeposit(deposit.id)}
+                              className="shrink-0 h-8 px-3"
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              <span className="text-xs">Reject</span>
+                            </Button>
+                          </div>
+                        )}
+                        {deposit.status !== 'pending' && (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {deposit.approved_at && formatDate(deposit.approved_at)}
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {/* Mobile scroll hint */}
+            <div className="block sm:hidden text-center py-2 text-xs text-muted-foreground border-t bg-muted/30">
+              ← Swipe left to see actions →
+            </div>
           </div>
           
           {filteredDeposits.length === 0 && (

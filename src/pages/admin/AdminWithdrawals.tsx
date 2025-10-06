@@ -289,80 +289,89 @@ export default function AdminWithdrawals() {
           <CardTitle>Withdrawals ({filteredWithdrawals.length})</CardTitle>
           <CardDescription>Manage withdrawal requests and approvals</CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-hidden">
           <div 
-            className="w-full overflow-x-auto" 
+            className="w-full overflow-x-auto overflow-y-visible"
             style={{ 
               WebkitOverflowScrolling: 'touch',
-              touchAction: 'pan-x pan-y'
+              scrollbarWidth: 'thin',
+              msOverflowStyle: 'auto'
             }}
           >
-            <Table className="min-w-[900px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="whitespace-nowrap">User ID</TableHead>
-                  <TableHead className="whitespace-nowrap">Amount</TableHead>
-                  <TableHead className="whitespace-nowrap">Crypto Type</TableHead>
-                  <TableHead className="whitespace-nowrap">Wallet Address</TableHead>
-                  <TableHead className="whitespace-nowrap">Status</TableHead>
-                  <TableHead className="whitespace-nowrap">Created</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredWithdrawals.map((withdrawal) => (
-                  <TableRow key={withdrawal.id}>
-                    <TableCell className="font-mono text-sm">
-                      {withdrawal.user_id.substring(0, 8)}...
-                    </TableCell>
-                    <TableCell className="font-mono font-bold">
-                      {formatCurrency(withdrawal.amount)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{withdrawal.crypto_type}</Badge>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs max-w-32 truncate">
-                      {withdrawal.wallet_address}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(withdrawal.status)}>
-                        {withdrawal.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {formatDate(withdrawal.created_at)}
-                    </TableCell>
-                    <TableCell className="text-right" style={{ minWidth: '120px' }}>
-                      {withdrawal.status === 'pending' && (
-                        <div className="flex justify-end gap-1 whitespace-nowrap">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => handleApproveWithdrawal(withdrawal.id)}
-                            className="shrink-0"
-                          >
-                            <Check className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleRejectWithdrawal(withdrawal.id)}
-                            className="shrink-0"
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      )}
-                      {withdrawal.status !== 'pending' && (
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          {withdrawal.approved_at && formatDate(withdrawal.approved_at)}
-                        </span>
-                      )}
-                    </TableCell>
+            <div className="inline-block min-w-full">
+              <Table className="w-full" style={{ minWidth: '900px' }}>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">User ID</TableHead>
+                    <TableHead className="whitespace-nowrap">Amount</TableHead>
+                    <TableHead className="whitespace-nowrap">Crypto Type</TableHead>
+                    <TableHead className="whitespace-nowrap">Wallet Address</TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Created</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredWithdrawals.map((withdrawal) => (
+                    <TableRow key={withdrawal.id}>
+                      <TableCell className="font-mono text-sm">
+                        {withdrawal.user_id.substring(0, 8)}...
+                      </TableCell>
+                      <TableCell className="font-mono font-bold">
+                        {formatCurrency(withdrawal.amount)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{withdrawal.crypto_type}</Badge>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs max-w-32 truncate">
+                        {withdrawal.wallet_address}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusVariant(withdrawal.status)}>
+                          {withdrawal.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {formatDate(withdrawal.created_at)}
+                      </TableCell>
+                      <TableCell className="text-right" style={{ minWidth: '140px', paddingRight: '16px' }}>
+                        {withdrawal.status === 'pending' && (
+                          <div className="flex justify-end gap-2 whitespace-nowrap">
+                            <Button
+                              size="sm"
+                              variant="default"
+                              onClick={() => handleApproveWithdrawal(withdrawal.id)}
+                              className="shrink-0 h-8 px-3"
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              <span className="text-xs">Approve</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleRejectWithdrawal(withdrawal.id)}
+                              className="shrink-0 h-8 px-3"
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              <span className="text-xs">Reject</span>
+                            </Button>
+                          </div>
+                        )}
+                        {withdrawal.status !== 'pending' && (
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            {withdrawal.approved_at && formatDate(withdrawal.approved_at)}
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {/* Mobile scroll hint */}
+            <div className="block sm:hidden text-center py-2 text-xs text-muted-foreground border-t bg-muted/30">
+              ← Swipe left to see actions →
+            </div>
           </div>
           
           {filteredWithdrawals.length === 0 && (
