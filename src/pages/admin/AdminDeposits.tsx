@@ -283,22 +283,24 @@ export default function AdminDeposits() {
       </div>
 
       {/* Deposits Table */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>Deposits ({filteredDeposits.length})</CardTitle>
           <CardDescription>Manage deposit requests and approvals</CardDescription>
         </CardHeader>
-        <CardContent className="p-0 overflow-hidden">
+        <CardContent className="p-0">
+          {/* Mobile-optimized scroll container */}
           <div 
-            className="w-full overflow-x-auto overflow-y-visible"
+            className="overflow-x-scroll overflow-y-visible"
             style={{ 
               WebkitOverflowScrolling: 'touch',
-              scrollbarWidth: 'thin',
-              msOverflowStyle: 'auto'
+              touchAction: 'pan-x',
+              width: '100%',
+              maxWidth: '100vw',
+              position: 'relative'
             }}
           >
-            <div className="inline-block min-w-full">
-              <Table className="w-full" style={{ minWidth: '900px' }}>
+            <Table style={{ minWidth: '1000px', width: '1000px' }}>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="whitespace-nowrap">User ID</TableHead>
@@ -366,10 +368,9 @@ export default function AdminDeposits() {
                   ))}
                 </TableBody>
               </Table>
-            </div>
             {/* Mobile scroll hint */}
-            <div className="block sm:hidden text-center py-2 text-xs text-muted-foreground border-t bg-muted/30">
-              ← Swipe left to see actions →
+            <div className="block sm:hidden text-center py-2 px-4 text-xs text-muted-foreground bg-muted/50 border-t sticky left-0 right-0">
+              👉 Swipe left to see Approve/Reject buttons
             </div>
           </div>
           
