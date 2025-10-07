@@ -26,6 +26,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { Mail } from 'lucide-react';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -61,6 +62,12 @@ const adminNavItems = [
     url: '/admin/content', 
     icon: Menu,
     description: 'Manage site content and branding'
+  },
+  { 
+    title: 'Contact Page', 
+    url: '/admin/contact', 
+    icon: Mail,
+    description: 'Manage contact page content'
   },
   { 
     title: 'Admin Management', 

@@ -25,6 +25,7 @@ import AdminDeposits from './pages/admin/AdminDeposits';
 import AdminWithdrawals from './pages/admin/AdminWithdrawals';
 import AdminManagement from './pages/admin/AdminManagement';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminContact from './pages/admin/AdminContact';
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminLayout } from "./components/AdminLayout";
@@ -62,6 +63,7 @@ const App = () => (
           <Route path="/admin/withdrawals" element={<ProtectedRoute adminOnly><AdminLayout><AdminWithdrawals /></AdminLayout></ProtectedRoute>} />
           <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminLayout><AdminUsers /></AdminLayout></ProtectedRoute>} />
           <Route path="/admin/content" element={<ProtectedRoute adminOnly><AdminLayout><AdminContent /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin/contact" element={<ProtectedRoute adminOnly><AdminLayout><AdminContact /></AdminLayout></ProtectedRoute>} />
           <Route path="/admin/management" element={<ProtectedRoute adminOnly><AdminLayout><AdminManagement /></AdminLayout></ProtectedRoute>} />
           <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminLayout><AdminSettings /></AdminLayout></ProtectedRoute>} />
           
