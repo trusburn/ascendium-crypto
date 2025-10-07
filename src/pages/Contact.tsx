@@ -3,23 +3,33 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { MapPin, Phone, Mail, Clock, MessageCircle, Headphones } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, MessageCircle, Headphones, Loader2 } from 'lucide-react';
+import { useContactContent } from '@/hooks/useContactContent';
 
 const Contact = () => {
+  const { content, isLoading } = useContactContent();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   const contactMethods = [
     {
       icon: Mail,
       title: "Email Support",
       description: "Get help via email",
-      contact: "support@cryptovault.com",
+      contact: content.support_email,
       availability: "24/7 Response"
     },
     {
       icon: Phone,
       title: "Phone Support",
       description: "Speak with our experts",
-      contact: "+1 (555) 123-4567",
-      availability: "Mon-Fri 9AM-6PM EST"
+      contact: content.support_phone,
+      availability: content.business_hours_weekday.split(':')[0]
     },
     {
       icon: MessageCircle,
@@ -32,29 +42,17 @@ const Contact = () => {
       icon: Headphones,
       title: "Priority Support",
       description: "VIP customer service",
-      contact: "premium@cryptovault.com",
+      contact: content.support_email,
       availability: "24/7 Premium Support"
     }
   ];
 
   const offices = [
     {
-      city: "New York",
-      address: "123 Wall Street, Suite 500",
-      zipCode: "New York, NY 10005",
-      phone: "+1 (555) 123-4567"
-    },
-    {
-      city: "London",
-      address: "456 Canary Wharf",
-      zipCode: "London E14 5AB, UK",
-      phone: "+44 20 7946 0958"
-    },
-    {
-      city: "Singapore",
-      address: "789 Marina Bay Drive",
-      zipCode: "Singapore 018956",
-      phone: "+65 6789 0123"
+      city: content.office_city,
+      address: content.office_address,
+      zipCode: content.office_zip,
+      phone: content.support_phone
     }
   ];
 
@@ -68,12 +66,11 @@ const Contact = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h1 className="text-5xl lg:text-6xl font-bold mb-6">
               <span className="bg-crypto-gradient bg-clip-text text-transparent">
-                Get in Touch
+                {content.hero_title}
               </span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Have questions about crypto investing? Need help with your account? 
-              Our expert team is here to assist you 24/7 with all your investment needs.
+              {content.hero_description}
             </p>
           </div>
         </section>
@@ -112,7 +109,7 @@ const Contact = () => {
             <div className="grid lg:grid-cols-2 gap-16">
               {/* Contact Form */}
               <div>
-                <h2 className="text-3xl font-bold text-foreground mb-8">Send Us a Message</h2>
+                <h2 className="text-3xl font-bold text-foreground mb-8">{content.form_title}</h2>
                 <Card className="bg-background/50 backdrop-blur-sm border border-border/50">
                   <CardContent className="p-8">
                     <form className="space-y-6">
@@ -147,7 +144,7 @@ const Contact = () => {
                       </div>
                       
                       <Button className="w-full bg-crypto-gradient hover:opacity-90 text-background">
-                        Send Message
+                        {content.form_button_text}
                       </Button>
                     </form>
                   </CardContent>
@@ -189,9 +186,9 @@ const Contact = () => {
                       <div className="space-y-2">
                         <h3 className="text-lg font-semibold text-foreground">Business Hours</h3>
                         <div className="space-y-1 text-muted-foreground">
-                          <p>Monday - Friday: 9:00 AM - 6:00 PM EST</p>
-                          <p>Saturday: 10:00 AM - 4:00 PM EST</p>
-                          <p>Sunday: Closed</p>
+                          <p>{content.business_hours_weekday}</p>
+                          <p>{content.business_hours_saturday}</p>
+                          <p>{content.business_hours_sunday}</p>
                           <p className="text-crypto-green font-medium mt-2">24/7 Online Support Available</p>
                         </div>
                       </div>
@@ -204,9 +201,9 @@ const Contact = () => {
                   <CardContent className="p-6 text-center">
                     <h3 className="text-xl font-bold text-background mb-2">Emergency Support</h3>
                     <p className="text-background/80 mb-4">
-                      For urgent account or security issues
+                      {content.emergency_description}
                     </p>
-                    <p className="text-2xl font-bold text-background">+1 (555) 911-HELP</p>
+                    <p className="text-2xl font-bold text-background">{content.emergency_phone}</p>
                     <p className="text-sm text-background/80 mt-2">Available 24/7</p>
                   </CardContent>
                 </Card>

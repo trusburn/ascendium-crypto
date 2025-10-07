@@ -2,21 +2,30 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { MapPin, Phone, Mail, Send } from 'lucide-react';
+import { MapPin, Phone, Mail, Send, Loader2 } from 'lucide-react';
+import { useContactContent } from '@/hooks/useContactContent';
 
 export const Contact = () => {
+  const { content, isLoading } = useContactContent();
+
+  if (isLoading) {
+    return (
+      <div className="py-12 sm:py-16 lg:py-20 bg-muted/50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   return (
     <section id="contact" className="py-12 sm:py-16 lg:py-20 bg-muted/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8 sm:mb-12 lg:mb-16">
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6">
             <span className="bg-crypto-gradient bg-clip-text text-transparent">
-              Get in Touch
+              {content.hero_title}
             </span>
           </h2>
           <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto">
-            Ready to start your crypto investment journey? Have questions about our platform? 
-            Our expert team is here to help you succeed.
+            {content.hero_description}
           </p>
         </div>
 
@@ -24,7 +33,7 @@ export const Contact = () => {
           {/* Contact Form */}
           <Card className="bg-background/50 backdrop-blur-sm border border-border/50">
             <CardContent className="p-4 sm:p-6 lg:p-8">
-              <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">Send Us a Message</h3>
+              <h3 className="text-xl sm:text-2xl font-bold text-foreground mb-4 sm:mb-6">{content.form_title}</h3>
               <form className="space-y-4 sm:space-y-6">
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -58,7 +67,7 @@ export const Contact = () => {
                 
                 <Button className="w-full bg-crypto-gradient hover:opacity-90 text-background">
                   <Send className="mr-2 h-4 w-4" />
-                  Send Message
+                  {content.form_button_text}
                 </Button>
               </form>
             </CardContent>
@@ -75,7 +84,7 @@ export const Contact = () => {
                   </div>
                   <div>
                     <h4 className="text-lg font-semibold text-foreground">Email</h4>
-                    <p className="text-muted-foreground">support@cryptovault.com</p>
+                    <p className="text-muted-foreground">{content.support_email}</p>
                     <p className="text-sm text-crypto-blue">24/7 Support Available</p>
                   </div>
                 </div>
@@ -86,8 +95,8 @@ export const Contact = () => {
                   </div>
                   <div>
                     <h4 className="text-lg font-semibold text-foreground">Phone</h4>
-                    <p className="text-muted-foreground">+1 (555) 123-4567</p>
-                    <p className="text-sm text-crypto-blue">Mon-Fri 9AM-6PM EST</p>
+                    <p className="text-muted-foreground">{content.support_phone}</p>
+                    <p className="text-sm text-crypto-blue">{content.business_hours_weekday.split(':')[0]}</p>
                   </div>
                 </div>
                 
@@ -97,8 +106,8 @@ export const Contact = () => {
                   </div>
                   <div>
                     <h4 className="text-lg font-semibold text-foreground">Office</h4>
-                    <p className="text-muted-foreground">123 Wall Street, Suite 500</p>
-                    <p className="text-muted-foreground">New York, NY 10005</p>
+                    <p className="text-muted-foreground">{content.office_address}</p>
+                    <p className="text-muted-foreground">{content.office_city}, {content.office_zip}</p>
                   </div>
                 </div>
               </div>
