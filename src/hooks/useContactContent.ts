@@ -66,7 +66,7 @@ export const useContactContent = () => {
 
     fetchContent();
 
-    // Subscribe to changes
+    // Subscribe to changes (realtime doesn't support 'like', so we listen to all admin_settings changes)
     const channel = supabase
       .channel('contact-settings-changes')
       .on(
@@ -75,10 +75,18 @@ export const useContactContent = () => {
           event: '*',
           schema: 'public',
           table: 'admin_settings',
-          filter: 'key=like.contact_%',
         },
-        () => {
-          fetchContent();
+        (payload) => {
+          // Only refetch if the change is related to contact settings
+          if (payload.new && typeof payload.new === 'object' && 'key' in payload.new) {
+            const key = payload.new.key as string;
+            if (key.startsWith('contact_')) {
+              fetchContent();
+            }
+          } else {
+            // For delete events, just refetch to be safe
+            fetchContent();
+          }
         }
       )
       .subscribe();
