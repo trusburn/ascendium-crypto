@@ -53,7 +53,8 @@ export const useContactContent = () => {
           const settings: Partial<ContactContent> = {};
           data.forEach((item) => {
             const key = item.key.replace('contact_', '') as keyof ContactContent;
-            settings[key] = item.value as string;
+            // Parse JSON value from jsonb column
+            settings[key] = typeof item.value === 'string' ? JSON.parse(item.value) : item.value;
           });
           setContent({ ...defaultContent, ...settings });
         }

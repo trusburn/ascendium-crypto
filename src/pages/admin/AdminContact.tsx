@@ -77,7 +77,7 @@ export default function AdminContact() {
     mutationFn: async (settings: ContactSettings) => {
       const updates = Object.entries(settings).map(([key, value]) => ({
         key: `contact_${key}`,
-        value,
+        value: JSON.stringify(value), // Wrap in JSON for jsonb column
       }));
 
       for (const update of updates) {
