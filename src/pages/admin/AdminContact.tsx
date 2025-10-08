@@ -64,7 +64,8 @@ export default function AdminContact() {
         const settings: Partial<ContactSettings> = {};
         data.forEach((item) => {
           const key = item.key.replace('contact_', '') as keyof ContactSettings;
-          settings[key] = item.value as string;
+          // Parse JSON value from jsonb column
+          settings[key] = typeof item.value === 'string' ? JSON.parse(item.value) : item.value;
         });
         setFormData({ ...defaultSettings, ...settings });
       }
@@ -75,16 +76,20 @@ export default function AdminContact() {
 
   const updateMutation = useMutation({
     mutationFn: async (settings: ContactSettings) => {
+      console.log('Saving contact settings:', settings);
       const updates = Object.entries(settings).map(([key, value]) => ({
         key: `contact_${key}`,
         value: JSON.stringify(value), // Wrap in JSON for jsonb column
       }));
 
+      console.log('Updates to save:', updates);
+
       for (const update of updates) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('admin_settings')
           .upsert({ key: update.key, value: update.value }, { onConflict: 'key' });
 
+        console.log('Upsert result:', { key: update.key, data, error });
         if (error) throw error;
       }
     },
