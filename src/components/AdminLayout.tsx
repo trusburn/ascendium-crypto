@@ -8,7 +8,8 @@ import {
   BarChart3, 
   Settings,
   LogOut,
-  Menu
+  Menu,
+  Wallet
 } from 'lucide-react';
 import {
   Sidebar,
@@ -68,6 +69,12 @@ const adminNavItems = [
     url: '/admin/contact', 
     icon: Mail,
     description: 'Manage contact page content'
+  },
+  { 
+    title: 'Wallet Addresses', 
+    url: '/admin/wallets', 
+    icon: Wallet,
+    description: 'Manage deposit wallet addresses'
   },
   { 
     title: 'Admin Management', 

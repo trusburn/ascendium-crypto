@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,11 @@ const DashboardDeposit = () => {
   const [walletAddress, setWalletAddress] = useState('');
   const [profitCalculated, setProfitCalculated] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [walletAddresses, setWalletAddresses] = useState({
+    bitcoin: '',
+    ethereum: '',
+    usdt: '',
+  });
 
   const minDeposit = settings.minimum_deposit;
 
@@ -27,14 +32,35 @@ const DashboardDeposit = () => {
     { value: 'bitcoin', label: 'Bitcoin (BTC)', rate: 0.15 },
     { value: 'ethereum', label: 'Ethereum (ETH)', rate: 0.18 },
     { value: 'usdt', label: 'USDT (TRC20)', rate: 0.12 },
-    { value: 'bnb', label: 'BNB (BSC)', rate: 0.20 },
   ];
 
-  const walletAddresses = {
-    bitcoin: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-    ethereum: '0x742d35cc6635c0532925a3b8d23c82c6b1234567',
-    usdt: 'TQn9Y2khEsLJW1ChVWFMSMeRDow5oREqjK',
-    bnb: '0x742d35cc6635c0532925a3b8d23c82c6b1234567',
+  useEffect(() => {
+    fetchWalletAddresses();
+  }, []);
+
+  const fetchWalletAddresses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('admin_settings')
+        .select('key, value')
+        .in('key', ['wallet_bitcoin', 'wallet_ethereum', 'wallet_usdt']);
+
+      if (error) throw error;
+
+      const addresses: any = {};
+      data?.forEach((setting) => {
+        const cryptoType = setting.key.replace('wallet_', '');
+        addresses[cryptoType] = setting.value || '';
+      });
+
+      setWalletAddresses({
+        bitcoin: addresses.bitcoin || '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
+        ethereum: addresses.ethereum || '0x742d35cc6635c0532925a3b8d23c82c6b1234567',
+        usdt: addresses.usdt || 'TQn9Y2khEsLJW1ChVWFMSMeRDow5oREqjK',
+      });
+    } catch (error) {
+      console.error('Error fetching wallet addresses:', error);
+    }
   };
 
   const selectedCrypto = cryptoOptions.find(option => option.value === cryptoType);
