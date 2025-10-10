@@ -77,7 +77,13 @@ const adminNavItems = [
     description: 'Manage deposit wallet addresses'
   },
   { 
-    title: 'Admin Management', 
+    title: 'Crypto Management', 
+    url: '/admin/crypto', 
+    icon: TrendingUp,
+    description: 'Manage tracked cryptocurrencies'
+  },
+  { 
+    title: 'Admin Management',
     url: '/admin/management', 
     icon: Shield,
     description: 'Manage admin accounts'

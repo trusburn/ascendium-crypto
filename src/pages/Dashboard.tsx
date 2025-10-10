@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import TradingChart from '@/components/TradingChart';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import TradingChart from "@/components/TradingChart";
+import CryptoTicker from "@/components/CryptoTicker";
+import TradingViewChart from "@/components/TradingViewChart";
 import { 
   Wallet, 
   TrendingUp, 
@@ -130,6 +132,9 @@ const Dashboard = () => {
           <p className="text-background/80">Track your crypto investments and grow your wealth</p>
         </div>
 
+        {/* Real-time Crypto Prices */}
+        <CryptoTicker />
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat, index) => {
@@ -150,6 +155,9 @@ const Dashboard = () => {
             );
           })}
         </div>
+
+        {/* TradingView Chart Section */}
+        <TradingViewChart />
 
         {/* Trading Chart Section */}
         <TradingChart />
