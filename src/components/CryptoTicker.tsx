@@ -23,7 +23,7 @@ const CryptoTicker = () => {
   const fetchPrices = async () => {
     try {
       // Fetch tracked cryptos from admin settings
-      const { data: settingsData } = await supabase
+      const { data: settingsData, error: settingsError } = await supabase
         .from("admin_settings")
         .select("value")
         .eq("key", "tracked_cryptos")
@@ -35,14 +35,29 @@ const CryptoTicker = () => {
         { symbol: "USDT", name: "Tether", coingecko_id: "tether", enabled: true },
       ];
       
-      const trackedCryptos = Array.isArray(settingsData?.value) ? settingsData.value : defaultCryptos;
+      // Use default cryptos if no settings found
+      const trackedCryptos = (settingsError || !settingsData?.value) ? defaultCryptos : 
+        (Array.isArray(settingsData.value) ? settingsData.value : defaultCryptos);
+      
       const enabledCryptos = trackedCryptos.filter((c: any) => c.enabled);
+      
+      if (enabledCryptos.length === 0) {
+        setPrices([]);
+        setLoading(false);
+        return;
+      }
+      
       const ids = enabledCryptos.map((c: any) => c.coingecko_id).join(",");
 
       // Fetch prices from CoinGecko
       const response = await fetch(
         `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`
       );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch prices');
+      }
+      
       const data = await response.json();
 
       const priceData = enabledCryptos.map((crypto: any) => ({
@@ -56,6 +71,12 @@ const CryptoTicker = () => {
       setLoading(false);
     } catch (error) {
       console.error("Error fetching crypto prices:", error);
+      // Set default prices on error
+      setPrices([
+        { symbol: "BTC", name: "Bitcoin", price: 0, change24h: 0 },
+        { symbol: "ETH", name: "Ethereum", price: 0, change24h: 0 },
+        { symbol: "USDT", name: "Tether", price: 0, change24h: 0 },
+      ]);
       setLoading(false);
     }
   };

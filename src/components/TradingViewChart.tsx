@@ -69,7 +69,7 @@ const TradingViewChart = () => {
 
   const fetchCryptos = async () => {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("admin_settings")
         .select("value")
         .eq("key", "tracked_cryptos")
@@ -81,26 +81,50 @@ const TradingViewChart = () => {
         { symbol: "USDT", name: "Tether", coingecko_id: "tether", enabled: true },
       ];
       
-      const trackedCryptos = Array.isArray(data?.value) ? data.value : defaultCryptos;
+      // Use default cryptos if error or no data
+      const trackedCryptos = (error || !data?.value) ? defaultCryptos :
+        (Array.isArray(data.value) ? data.value : defaultCryptos);
+      
       const enabled = trackedCryptos.filter((c: any) => c.enabled);
+      
+      if (enabled.length === 0) {
+        setCryptos(defaultCryptos as unknown as CryptoOption[]);
+        setSelectedCrypto("bitcoin");
+        return;
+      }
+      
       setCryptos(enabled as unknown as CryptoOption[]);
       if (enabled.length > 0) {
         setSelectedCrypto((enabled[0] as any).coingecko_id);
       }
     } catch (error) {
       console.error("Error fetching cryptos:", error);
+      // Set defaults on error
+      const defaultCryptos = [
+        { symbol: "BTC", name: "Bitcoin", coingecko_id: "bitcoin", enabled: true },
+        { symbol: "ETH", name: "Ethereum", coingecko_id: "ethereum", enabled: true },
+      ];
+      setCryptos(defaultCryptos as unknown as CryptoOption[]);
+      setSelectedCrypto("bitcoin");
     }
   };
 
   const fetchChartData = async (cryptoId: string) => {
     try {
+      if (!cryptoId) return;
+      
       // Fetch 7 days of OHLC data from CoinGecko
       const response = await fetch(
         `https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc?vs_currency=usd&days=7`
       );
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch chart data');
+      }
+      
       const data = await response.json();
 
-      if (seriesRef.current && Array.isArray(data)) {
+      if (seriesRef.current && Array.isArray(data) && data.length > 0) {
         const chartData = data.map((item: number[]) => ({
           time: Math.floor(item[0] / 1000) as any,
           open: item[1],
@@ -113,6 +137,7 @@ const TradingViewChart = () => {
       }
     } catch (error) {
       console.error("Error fetching chart data:", error);
+      // Don't crash - just leave the chart empty
     }
   };
 
