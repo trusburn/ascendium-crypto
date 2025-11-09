@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import TradingChart from "@/components/TradingChart";
 import CryptoTicker from "@/components/CryptoTicker";
 import TradingViewChart from "@/components/TradingViewChart";
 import { 
@@ -77,8 +76,8 @@ const Dashboard = () => {
 
     fetchProfile();
     
-    // Refresh profile data every 1 second for live profit updates
-    const interval = setInterval(fetchProfile, 1000);
+    // Refresh profile data every 30 seconds
+    const interval = setInterval(fetchProfile, 30000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -158,9 +157,6 @@ const Dashboard = () => {
 
         {/* TradingView Chart Section */}
         <TradingViewChart />
-
-        {/* Trading Chart Section */}
-        <TradingChart />
 
         {/* Quick Actions */}
         <Card className="bg-muted/50 border-border">
