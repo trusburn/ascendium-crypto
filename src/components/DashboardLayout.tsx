@@ -111,9 +111,9 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </div>
 
       {/* Main Content */}
-      <div className="lg:ml-64">
+      <div className="lg:ml-64 relative z-0">
         {/* Top Header */}
-        <header className="bg-background border-b border-border p-4">
+        <header className="bg-background border-b border-border p-4 relative z-10">
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
@@ -129,7 +129,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         </header>
 
         {/* Page Content */}
-        <main className="p-3 sm:p-4 lg:p-6">
+        <main className="p-3 sm:p-4 lg:p-6 relative z-10">
           {children}
         </main>
       </div>
