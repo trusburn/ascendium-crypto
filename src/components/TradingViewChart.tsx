@@ -17,10 +17,7 @@ const TradingViewChart = () => {
   const [cryptos, setCryptos] = useState<CryptoOption[]>([]);
   const [selectedCrypto, setSelectedCrypto] = useState<string>("bitcoin");
 
-  useEffect(() => {
-    fetchCryptos();
-  }, []);
-
+  // Initialize chart once on mount
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
@@ -59,12 +56,26 @@ const TradingViewChart = () => {
 
     window.addEventListener("resize", handleResize);
 
-    fetchChartData(selectedCrypto);
-
     return () => {
       window.removeEventListener("resize", handleResize);
-      chart.remove();
+      if (chartRef.current) {
+        chartRef.current.remove();
+        chartRef.current = null;
+        seriesRef.current = null;
+      }
     };
+  }, []);
+
+  // Fetch cryptos on mount
+  useEffect(() => {
+    fetchCryptos();
+  }, []);
+
+  // Update chart data when crypto selection changes
+  useEffect(() => {
+    if (selectedCrypto && seriesRef.current) {
+      fetchChartData(selectedCrypto);
+    }
   }, [selectedCrypto]);
 
   const fetchCryptos = async () => {
