@@ -19,7 +19,8 @@ const TradingViewChart = () => {
 
   // Initialize chart once on mount
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    // Guard against double initialization (React Strict Mode)
+    if (!chartContainerRef.current || chartRef.current) return;
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
