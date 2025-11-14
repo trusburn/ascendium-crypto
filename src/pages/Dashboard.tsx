@@ -140,11 +140,11 @@ const Dashboard = () => {
             return (
               <Card key={index} className="bg-muted/50 border-border hover:bg-muted/70 transition-colors">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                  <CardTitle className="text-sm font-medium text-foreground">{stat.title}</CardTitle>
                   <Icon className={`h-5 w-5 text-${stat.color}`} />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stat.value}</div>
+                  <div className="text-2xl font-bold text-foreground">{stat.value}</div>
                   <p className="text-xs text-crypto-green">
                     {stat.change} from last month
                   </p>
@@ -160,7 +160,7 @@ const Dashboard = () => {
             <CardTitle>Market Overview</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">Live crypto prices are displayed above. Advanced charting coming soon!</p>
+            <p className="text-foreground/70">Live crypto prices are displayed above. Advanced charting coming soon!</p>
           </CardContent>
         </Card>
 
