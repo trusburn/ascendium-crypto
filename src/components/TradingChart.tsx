@@ -345,7 +345,7 @@ const TradingChart = () => {
             </CardTitle>
             <div className="flex items-center space-x-4">
               <div className="text-right">
-                <p className="text-sm text-muted-foreground">Total Profit</p>
+                <p className="text-sm text-foreground/70">Total Profit</p>
                 <p className="text-lg font-bold text-crypto-green">
                   +${totalProfit.toFixed(2)}
                 </p>
@@ -467,7 +467,7 @@ const TradingChart = () => {
           <div className="mt-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">Select Signal</label>
+                <label className="text-sm font-medium mb-2 block text-foreground">Select Signal</label>
                 <Select value={selectedSignal} onValueChange={setSelectedSignal}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choose your purchased signal" />
@@ -482,14 +482,14 @@ const TradingChart = () => {
                 </Select>
               </div>
               <div>
-                <label className="text-sm font-medium mb-2 block">Trade Amount</label>
+                <label className="text-sm font-medium mb-2 block text-foreground">Trade Amount</label>
                 <div className="flex items-center space-x-2">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                   <input
                     type="number"
                     value={tradeAmount}
                     onChange={(e) => setTradeAmount(Number(e.target.value))}
-                    className="flex-1 px-3 py-2 bg-background border border-border rounded-md"
+                    className="flex-1 px-3 py-2 bg-background border border-border rounded-md text-foreground"
                     min="1"
                     max="10000"
                   />
@@ -524,7 +524,7 @@ const TradingChart = () => {
       {activeTrades.length > 0 && (
         <Card className="bg-muted/50 border-border">
           <CardHeader>
-            <CardTitle>Active Trades</CardTitle>
+            <CardTitle className="text-foreground">Active Trades</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -539,15 +539,15 @@ const TradingChart = () => {
                         {trade.trade_type.toUpperCase()}
                       </Badge>
                     <div>
-                      <p className="font-medium">{trade.signal_name}</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="font-medium text-foreground">{trade.signal_name}</p>
+                      <p className="text-sm text-foreground/70">
                         ${trade.initial_amount} • ×{trade.profit_multiplier}
                       </p>
                     </div>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-crypto-green">+${currentProfit.toFixed(2)}</p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-foreground/70">
                         {hoursElapsed.toFixed(1)}h ago
                       </p>
                     </div>
@@ -562,9 +562,9 @@ const TradingChart = () => {
       {purchasedSignals.length === 0 && (
         <Card className="bg-muted/50 border-border">
           <CardContent className="text-center py-8">
-            <Activity className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Signals Purchased</h3>
-            <p className="text-muted-foreground mb-4">
+            <Activity className="mx-auto h-12 w-12 text-foreground/50 mb-4" />
+            <h3 className="text-lg font-medium mb-2 text-foreground">No Signals Purchased</h3>
+            <p className="text-foreground/70 mb-4">
               Purchase trading signals to start trading and earning profits
             </p>
             <Button className="bg-crypto-gradient hover:opacity-90">
