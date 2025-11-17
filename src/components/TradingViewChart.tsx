@@ -20,9 +20,11 @@ const TradingViewChart = () => {
   // Initialize chart once on mount
   useEffect(() => {
     // Guard against double initialization (React Strict Mode)
-    if (!chartContainerRef.current || chartRef.current) return;
+    if (!chartContainerRef.current) return;
+    if (chartRef.current) return;
 
-    const chart = createChart(chartContainerRef.current, {
+    try {
+      const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: "#d1d5db",
@@ -35,17 +37,17 @@ const TradingViewChart = () => {
       height: 400,
     });
 
-    const candlestickSeries = chart.addSeries({
-      type: 'Candlestick',
-      upColor: "#10b981",
-      downColor: "#ef4444",
-      borderVisible: false,
-      wickUpColor: "#10b981",
-      wickDownColor: "#ef4444",
-    } as any);
+      const candlestickSeries = chart.addSeries({
+        type: 'Candlestick',
+        upColor: "#10b981",
+        downColor: "#ef4444",
+        borderVisible: false,
+        wickUpColor: "#10b981",
+        wickDownColor: "#ef4444",
+      } as any);
 
-    chartRef.current = chart;
-    seriesRef.current = candlestickSeries;
+      chartRef.current = chart;
+      seriesRef.current = candlestickSeries;
 
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
@@ -55,16 +57,19 @@ const TradingViewChart = () => {
       }
     };
 
-    window.addEventListener("resize", handleResize);
+      window.addEventListener("resize", handleResize);
 
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      if (chartRef.current) {
-        chartRef.current.remove();
-        chartRef.current = null;
-        seriesRef.current = null;
-      }
-    };
+      return () => {
+        window.removeEventListener("resize", handleResize);
+        if (chartRef.current) {
+          chartRef.current.remove();
+          chartRef.current = null;
+          seriesRef.current = null;
+        }
+      };
+    } catch (error) {
+      console.error("Error initializing chart:", error);
+    }
   }, []);
 
   // Fetch cryptos on mount

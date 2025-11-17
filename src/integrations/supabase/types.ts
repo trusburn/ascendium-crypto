@@ -20,7 +20,7 @@ export type Database = {
           admin_user_id: string
           created_at: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           new_values: Json | null
           old_values: Json | null
           table_name: string
@@ -32,7 +32,7 @@ export type Database = {
           admin_user_id: string
           created_at?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
           table_name: string
@@ -44,7 +44,7 @@ export type Database = {
           admin_user_id?: string
           created_at?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           new_values?: Json | null
           old_values?: Json | null
           table_name?: string
@@ -373,18 +373,9 @@ export type Database = {
         Args: { check_user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
       }
-      is_admin: {
-        Args: { check_user_id?: string }
-        Returns: boolean
-      }
-      sync_trading_profits: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      update_trade_profits: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      is_admin: { Args: { check_user_id?: string }; Returns: boolean }
+      sync_trading_profits: { Args: never; Returns: undefined }
+      update_trade_profits: { Args: never; Returns: undefined }
     }
     Enums: {
       user_role: "admin" | "user"
