@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import CryptoTicker from "@/components/CryptoTicker";
+import TradingViewChart from "@/components/TradingViewChart";
 import {
   Wallet, 
   TrendingUp, 
@@ -154,15 +155,8 @@ const Dashboard = () => {
           })}
         </div>
 
-        {/* Market Overview */}
-        <Card className="bg-muted/50 border-border">
-          <CardHeader>
-            <CardTitle>Market Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-foreground/70">Live crypto prices are displayed above. Advanced charting coming soon!</p>
-          </CardContent>
-        </Card>
+        {/* Live Trading Chart */}
+        <TradingViewChart />
 
         {/* Quick Actions */}
         <Card className="bg-muted/50 border-border">
