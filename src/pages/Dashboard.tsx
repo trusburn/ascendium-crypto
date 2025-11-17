@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import CryptoTicker from "@/components/CryptoTicker";
-import TradingViewChart from "@/components/TradingViewChart";
+import TradingChart from "@/components/TradingChart";
 import {
   Wallet, 
   TrendingUp, 
@@ -156,7 +156,7 @@ const Dashboard = () => {
         </div>
 
         {/* Live Trading Chart */}
-        <TradingViewChart />
+        <TradingChart />
 
         {/* Quick Actions */}
         <Card className="bg-muted/50 border-border">
