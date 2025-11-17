@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { TrendingUp, TrendingDown, Activity, DollarSign } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, DollarSign, Bitcoin, DollarSign as Forex } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface PurchasedSignal {
@@ -33,14 +34,112 @@ interface CandlestickData {
   close: number;
 }
 
+interface TradeableAsset {
+  id: string;
+  symbol: string;
+  name: string;
+  asset_type: string;
+  current_price: number;
+  api_id?: string;
+}
+
 const TradingChart = () => {
   const { user } = useAuth();
   const [purchasedSignals, setPurchasedSignals] = useState<PurchasedSignal[]>([]);
   const [activeTrades, setActiveTrades] = useState<ActiveTrade[]>([]);
   const [selectedSignal, setSelectedSignal] = useState<string>('');
+  const [selectedAsset, setSelectedAsset] = useState<string>('');
   const [tradeAmount, setTradeAmount] = useState<number>(100);
   const [chartData, setChartData] = useState<CandlestickData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cryptoAssets, setCryptoAssets] = useState<TradeableAsset[]>([]);
+  const [forexAssets, setForexAssets] = useState<TradeableAsset[]>([]);
+  const [assetType, setAssetType] = useState<'crypto' | 'forex'>('crypto');
+
+  // Fetch tradeable assets
+  useEffect(() => {
+    const fetchAssets = async () => {
+      try {
+        const { data: assets, error } = await supabase
+          .from('tradeable_assets')
+          .select('*')
+          .order('symbol');
+
+        if (error) throw error;
+
+        const crypto = assets?.filter(a => a.asset_type === 'crypto') || [];
+        const forex = assets?.filter(a => a.asset_type === 'forex') || [];
+
+        setCryptoAssets(crypto as TradeableAsset[]);
+        setForexAssets(forex as TradeableAsset[]);
+
+        // Set default selected asset
+        if (crypto.length > 0) setSelectedAsset(crypto[0].id);
+      } catch (error) {
+        console.error('Error fetching assets:', error);
+      }
+    };
+
+    fetchAssets();
+  }, []);
+
+  // Update crypto prices from CoinGecko
+  useEffect(() => {
+    const updateCryptoPrices = async () => {
+      try {
+        const cryptoIds = cryptoAssets.filter(a => a.api_id).map(a => a.api_id).join(',');
+        if (!cryptoIds) return;
+
+        const response = await fetch(
+          `https://api.coingecko.com/api/v3/simple/price?ids=${cryptoIds}&vs_currencies=usd`
+        );
+        const data = await response.json();
+
+        // Update prices in database
+        for (const asset of cryptoAssets) {
+          if (asset.api_id && data[asset.api_id]) {
+            await supabase
+              .from('tradeable_assets')
+              .update({ current_price: data[asset.api_id].usd })
+              .eq('id', asset.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error updating crypto prices:', error);
+      }
+    };
+
+    if (cryptoAssets.length > 0) {
+      updateCryptoPrices();
+      const interval = setInterval(updateCryptoPrices, 30000); // Update every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [cryptoAssets]);
+
+  // Simulate forex price movements
+  useEffect(() => {
+    const updateForexPrices = async () => {
+      try {
+        for (const asset of forexAssets) {
+          // Simulate small price changes (±0.1%)
+          const change = (Math.random() - 0.5) * 0.002;
+          const newPrice = asset.current_price * (1 + change);
+
+          await supabase
+            .from('tradeable_assets')
+            .update({ current_price: newPrice })
+            .eq('id', asset.id);
+        }
+      } catch (error) {
+        console.error('Error updating forex prices:', error);
+      }
+    };
+
+    if (forexAssets.length > 0) {
+      const interval = setInterval(updateForexPrices, 5000); // Update every 5 seconds
+      return () => clearInterval(interval);
+    }
+  }, [forexAssets]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -223,6 +322,24 @@ const TradingChart = () => {
         return;
       }
 
+      // Get current asset price
+      const { data: assetData, error: assetError } = await supabase
+        .from('tradeable_assets')
+        .select('current_price, symbol')
+        .eq('id', selectedAsset)
+        .single();
+
+      if (assetError || !assetData) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch asset price",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const entryPrice = assetData.current_price;
+
       // Create the trade
       const { error } = await supabase
         .from('trades')
@@ -233,6 +350,9 @@ const TradingChart = () => {
           trade_type: type,
           initial_amount: tradeAmount,
           profit_multiplier: selectedSignalData.profit_multiplier,
+          asset_id: selectedAsset,
+          entry_price: entryPrice,
+          current_price: entryPrice,
         });
 
       if (error) {
@@ -284,7 +404,7 @@ const TradingChart = () => {
 
       toast({
         title: "Trade Started",
-        description: `${type.toUpperCase()} order placed with ${selectedSignalData.signal_name} signal`,
+        description: `${type.toUpperCase()} order placed for ${assetData.symbol} with ${selectedSignalData.signal_name} signal`,
       });
 
       // Refresh trades data
@@ -465,6 +585,50 @@ const TradingChart = () => {
 
           {/* Trading Controls */}
           <div className="mt-6 space-y-4">
+            {/* Asset Selection Tabs */}
+            <Tabs value={assetType} onValueChange={(v) => setAssetType(v as 'crypto' | 'forex')}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="crypto" className="flex items-center gap-2">
+                  <Bitcoin className="h-4 w-4" />
+                  Cryptocurrencies
+                </TabsTrigger>
+                <TabsTrigger value="forex" className="flex items-center gap-2">
+                  <Forex className="h-4 w-4" />
+                  Forex
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="crypto" className="mt-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {cryptoAssets.map((asset) => (
+                    <Button
+                      key={asset.id}
+                      variant={selectedAsset === asset.id ? "default" : "outline"}
+                      onClick={() => setSelectedAsset(asset.id)}
+                      className="h-auto py-3 flex flex-col items-start"
+                    >
+                      <span className="font-bold text-sm">{asset.symbol}</span>
+                      <span className="text-xs text-muted-foreground">${asset.current_price.toLocaleString()}</span>
+                    </Button>
+                  ))}
+                </div>
+              </TabsContent>
+              <TabsContent value="forex" className="mt-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {forexAssets.map((asset) => (
+                    <Button
+                      key={asset.id}
+                      variant={selectedAsset === asset.id ? "default" : "outline"}
+                      onClick={() => setSelectedAsset(asset.id)}
+                      className="h-auto py-3 flex flex-col items-start"
+                    >
+                      <span className="font-bold text-sm">{asset.symbol}</span>
+                      <span className="text-xs text-muted-foreground">${asset.current_price.toFixed(4)}</span>
+                    </Button>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium mb-2 block text-foreground">Select Signal</label>
@@ -500,7 +664,7 @@ const TradingChart = () => {
             <div className="flex space-x-4">
               <Button
                 onClick={() => handleTrade('buy')}
-                disabled={!selectedSignal}
+                disabled={!selectedSignal || !selectedAsset}
                 className="flex-1 bg-crypto-green hover:bg-crypto-green/90"
               >
                 <TrendingUp className="mr-2 h-4 w-4" />
@@ -508,7 +672,7 @@ const TradingChart = () => {
               </Button>
               <Button
                 onClick={() => handleTrade('sell')}
-                disabled={!selectedSignal}
+                disabled={!selectedSignal || !selectedAsset}
                 variant="outline"
                 className="flex-1 border-destructive text-destructive hover:bg-destructive hover:text-background"
               >

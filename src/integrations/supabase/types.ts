@@ -223,12 +223,49 @@ export type Database = {
         }
         Relationships: []
       }
+      tradeable_assets: {
+        Row: {
+          api_id: string | null
+          asset_type: string
+          created_at: string | null
+          current_price: number | null
+          id: string
+          name: string
+          symbol: string
+          updated_at: string | null
+        }
+        Insert: {
+          api_id?: string | null
+          asset_type: string
+          created_at?: string | null
+          current_price?: number | null
+          id?: string
+          name: string
+          symbol: string
+          updated_at?: string | null
+        }
+        Update: {
+          api_id?: string | null
+          asset_type?: string
+          created_at?: string | null
+          current_price?: number | null
+          id?: string
+          name?: string
+          symbol?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       trades: {
         Row: {
+          asset_id: string | null
+          current_price: number | null
           current_profit: number
+          entry_price: number | null
           id: string
           initial_amount: number
           last_updated: string
+          price_change_percent: number | null
           profit_multiplier: number
           purchased_signal_id: string
           signal_id: string
@@ -238,10 +275,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          asset_id?: string | null
+          current_price?: number | null
           current_profit?: number
+          entry_price?: number | null
           id?: string
           initial_amount?: number
           last_updated?: string
+          price_change_percent?: number | null
           profit_multiplier?: number
           purchased_signal_id: string
           signal_id: string
@@ -251,10 +292,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          asset_id?: string | null
+          current_price?: number | null
           current_profit?: number
+          entry_price?: number | null
           id?: string
           initial_amount?: number
           last_updated?: string
+          price_change_percent?: number | null
           profit_multiplier?: number
           purchased_signal_id?: string
           signal_id?: string
@@ -276,6 +321,13 @@ export type Database = {
             columns: ["signal_id"]
             isOneToOne: false
             referencedRelation: "signals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trades_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "tradeable_assets"
             referencedColumns: ["id"]
           },
         ]
@@ -375,6 +427,7 @@ export type Database = {
       }
       is_admin: { Args: { check_user_id?: string }; Returns: boolean }
       sync_trading_profits: { Args: never; Returns: undefined }
+      update_asset_based_profits: { Args: never; Returns: undefined }
       update_trade_profits: { Args: never; Returns: undefined }
     }
     Enums: {
