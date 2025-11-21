@@ -61,6 +61,27 @@ const handler = async (req: Request): Promise<Response> => {
 
     let recipients: string[] = [];
 
+    // Get admin email settings
+    const { data: emailSettings } = await supabase
+      .from('admin_settings')
+      .select('key, value')
+      .in('key', ['email_from_address', 'email_logo_url']);
+    
+    let fromEmail = 'Trading Platform <onboarding@resend.dev>';
+    let logoUrl = '';
+    
+    if (emailSettings) {
+      const emailSetting = emailSettings.find(s => s.key === 'email_from_address');
+      const logoSetting = emailSettings.find(s => s.key === 'email_logo_url');
+      
+      if (emailSetting?.value) {
+        fromEmail = `Trading Platform <${emailSetting.value}>`;
+      }
+      if (logoSetting?.value) {
+        logoUrl = logoSetting.value as string;
+      }
+    }
+
     // Determine recipients based on email type
     if (type === 'broadcast') {
       // Send to all users
@@ -85,12 +106,12 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Generate HTML based on email type
-    const htmlContent = generateEmailHTML(type, subject, message, data);
+    const htmlContent = generateEmailHTML(type, subject, message, data, logoUrl);
 
     // Send emails
     const emailPromises = recipients.map(email =>
       resend.emails.send({
-        from: "Trading Platform <onboarding@resend.dev>",
+        from: fromEmail,
         to: [email],
         subject: subject,
         html: htmlContent,
@@ -126,7 +147,8 @@ function generateEmailHTML(
   type: string,
   subject: string,
   message: string,
-  data?: Record<string, any>
+  data?: Record<string, any>,
+  logoUrl?: string
 ): string {
   const styles = `
     <style>
@@ -191,6 +213,7 @@ function generateEmailHTML(
     <body>
       <div class="container">
         <div class="header">
+          ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="max-width: 150px; margin-bottom: 10px;" />` : ''}
           <h1>Trading Platform</h1>
         </div>
         <div class="content">

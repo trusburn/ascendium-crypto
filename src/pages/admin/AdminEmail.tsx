@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,11 +12,77 @@ import { Mail, Send, Users, User, AlertCircle, CheckCircle } from 'lucide-react'
 export default function AdminEmail() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  
+  // Load email settings on mount
+  useEffect(() => {
+    loadEmailSettings();
+  }, []);
+  
+  const loadEmailSettings = async () => {
+    try {
+      const { data: emailData } = await supabase
+        .from('admin_settings')
+        .select('value')
+        .eq('key', 'email_from_address')
+        .single();
+      
+      const { data: logoData } = await supabase
+        .from('admin_settings')
+        .select('value')
+        .eq('key', 'email_logo_url')
+        .single();
+      
+      if (emailData?.value) setAdminEmail(emailData.value as string);
+      if (logoData?.value) setLogoUrl(logoData.value as string);
+    } catch (error) {
+      console.error('Error loading email settings:', error);
+    }
+  };
+  
+  const handleSaveSettings = async () => {
+    if (!adminEmail) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide an admin email address",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setSavingSettings(true);
+    try {
+      // Save admin email
+      await supabase
+        .from('admin_settings')
+        .upsert({ key: 'email_from_address', value: adminEmail });
+      
+      // Save logo URL
+      await supabase
+        .from('admin_settings')
+        .upsert({ key: 'email_logo_url', value: logoUrl });
+      
+      toast({
+        title: "Settings Saved",
+        description: "Email settings updated successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
   const [emailType, setEmailType] = useState<'deposit' | 'withdrawal' | 'attention' | 'broadcast' | 'targeted' | 'verification' | 'custom'>('custom');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
   const [userId, setUserId] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const handleSendEmail = async () => {
     if (!subject || !message) {
@@ -136,6 +202,50 @@ export default function AdminEmail() {
         <h1 className="text-3xl font-bold text-foreground">Email Management</h1>
         <p className="text-muted-foreground mt-2">Send emails to users for various activities</p>
       </div>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Email Settings</CardTitle>
+          <CardDescription>Configure sender information and branding</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="adminEmail">Admin Email Address (Send From)</Label>
+            <Input
+              id="adminEmail"
+              type="email"
+              placeholder="admin@yourplatform.com"
+              value={adminEmail}
+              onChange={(e) => setAdminEmail(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              This email will be used as the sender and will receive contact form submissions
+            </p>
+          </div>
+          
+          <div>
+            <Label htmlFor="logoUrl">Email Logo URL (Optional)</Label>
+            <Input
+              id="logoUrl"
+              type="url"
+              placeholder="https://yourplatform.com/logo.png"
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Logo image to display in email header
+            </p>
+          </div>
+          
+          <Button
+            onClick={handleSaveSettings}
+            disabled={savingSettings}
+            className="w-full"
+          >
+            {savingSettings ? 'Saving...' : 'Save Email Settings'}
+          </Button>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
