@@ -71,6 +71,12 @@ const adminNavItems = [
     description: 'Manage contact page content'
   },
   { 
+    title: 'Email Management', 
+    url: '/admin/email', 
+    icon: Mail,
+    description: 'Send emails to users'
+  },
+  { 
     title: 'Wallet Addresses', 
     url: '/admin/wallets', 
     icon: Wallet,
