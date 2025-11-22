@@ -259,58 +259,58 @@ export default function AdminEmail() {
           <CardContent className="space-y-3">
             <Button
               onClick={() => handleTypeChange('deposit')}
-              variant={emailType === 'deposit' ? 'default' : 'outline'}
-              className="w-full justify-start"
+              variant={emailType === 'deposit' ? 'default' : 'secondary'}
+              className="w-full justify-start bg-gradient-to-r from-primary/10 to-primary/5 hover:from-primary/20 hover:to-primary/10 border border-primary/20"
             >
-              <CheckCircle className="mr-2 h-4 w-4" />
+              <CheckCircle className="mr-2 h-4 w-4 text-primary" />
               Deposit Confirmation
             </Button>
             <Button
               onClick={() => handleTypeChange('withdrawal')}
-              variant={emailType === 'withdrawal' ? 'default' : 'outline'}
-              className="w-full justify-start"
+              variant={emailType === 'withdrawal' ? 'default' : 'secondary'}
+              className="w-full justify-start bg-gradient-to-r from-accent/10 to-accent/5 hover:from-accent/20 hover:to-accent/10 border border-accent/20"
             >
-              <CheckCircle className="mr-2 h-4 w-4" />
+              <CheckCircle className="mr-2 h-4 w-4 text-accent" />
               Withdrawal Notification
             </Button>
             <Button
               onClick={() => handleTypeChange('attention')}
-              variant={emailType === 'attention' ? 'default' : 'outline'}
-              className="w-full justify-start"
+              variant={emailType === 'attention' ? 'default' : 'secondary'}
+              className="w-full justify-start bg-gradient-to-r from-destructive/10 to-destructive/5 hover:from-destructive/20 hover:to-destructive/10 border border-destructive/20"
             >
-              <AlertCircle className="mr-2 h-4 w-4" />
+              <AlertCircle className="mr-2 h-4 w-4 text-destructive" />
               Attention Required
             </Button>
             <Button
               onClick={() => handleTypeChange('verification')}
-              variant={emailType === 'verification' ? 'default' : 'outline'}
-              className="w-full justify-start"
+              variant={emailType === 'verification' ? 'default' : 'secondary'}
+              className="w-full justify-start bg-gradient-to-r from-green-500/10 to-green-500/5 hover:from-green-500/20 hover:to-green-500/10 border border-green-500/20"
             >
-              <CheckCircle className="mr-2 h-4 w-4" />
+              <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
               Account Verification
             </Button>
             <Button
               onClick={() => handleTypeChange('broadcast')}
-              variant={emailType === 'broadcast' ? 'default' : 'outline'}
-              className="w-full justify-start"
+              variant={emailType === 'broadcast' ? 'default' : 'secondary'}
+              className="w-full justify-start bg-gradient-to-r from-blue-500/10 to-blue-500/5 hover:from-blue-500/20 hover:to-blue-500/10 border border-blue-500/20"
             >
-              <Users className="mr-2 h-4 w-4" />
+              <Users className="mr-2 h-4 w-4 text-blue-500" />
               Broadcast to All Users
             </Button>
             <Button
               onClick={() => handleTypeChange('custom')}
-              variant={emailType === 'custom' ? 'default' : 'outline'}
-              className="w-full justify-start"
+              variant={emailType === 'custom' ? 'default' : 'secondary'}
+              className="w-full justify-start bg-gradient-to-r from-muted/10 to-muted/5 hover:from-muted/20 hover:to-muted/10 border border-muted-foreground/20"
             >
-              <Mail className="mr-2 h-4 w-4" />
+              <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
               Custom Email
             </Button>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5">
           <CardHeader>
-            <CardTitle>Email Composer</CardTitle>
+            <CardTitle className="text-primary">Email Composer</CardTitle>
             <CardDescription>Compose and send your email</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
