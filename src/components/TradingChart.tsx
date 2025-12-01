@@ -43,6 +43,8 @@ interface TradeableAsset {
   api_id?: string;
 }
 
+type TradingEngineType = 'rising' | 'general';
+
 const TradingChart = () => {
   const { user } = useAuth();
   const [purchasedSignals, setPurchasedSignals] = useState<PurchasedSignal[]>([]);
@@ -55,6 +57,54 @@ const TradingChart = () => {
   const [cryptoAssets, setCryptoAssets] = useState<TradeableAsset[]>([]);
   const [forexAssets, setForexAssets] = useState<TradeableAsset[]>([]);
   const [assetType, setAssetType] = useState<'crypto' | 'forex'>('crypto');
+  const [tradingEngine, setTradingEngine] = useState<TradingEngineType>('rising');
+
+  // Fetch trading engine setting for current user
+  useEffect(() => {
+    const fetchTradingEngine = async () => {
+      if (!user) return;
+
+      try {
+        // Get user-specific engine setting
+        const { data: userEngine } = await supabase
+          .from('user_trading_engines')
+          .select('engine_type')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        // Get global engine setting
+        const { data: globalSetting } = await supabase
+          .from('admin_settings')
+          .select('value')
+          .eq('key', 'global_trading_engine')
+          .maybeSingle();
+
+        const globalEngine = (globalSetting?.value as TradingEngineType) || 'rising';
+        
+        // Determine effective engine
+        if (userEngine?.engine_type === 'default' || !userEngine) {
+          setTradingEngine(globalEngine);
+        } else {
+          setTradingEngine(userEngine.engine_type as TradingEngineType);
+        }
+      } catch (error) {
+        console.error('Error fetching trading engine:', error);
+      }
+    };
+
+    fetchTradingEngine();
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel('trading-engine-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_settings' }, fetchTradingEngine)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_trading_engines' }, fetchTradingEngine)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   // Fetch tradeable assets
   useEffect(() => {
@@ -219,33 +269,58 @@ const TradingChart = () => {
         console.log('🔄 Merged trades with signals:', mergedTrades);
         setActiveTrades(mergedTrades);
 
-        // Generate candlestick chart data
+        // Generate candlestick chart data based on trading engine
         const baseValue = 100;
         const data = Array.from({ length: 30 }, (_, i) => {
           const totalProfit = mergedTrades?.reduce((sum, trade) => {
             const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
-            const daysElapsed = hoursElapsed / 24; // Convert to days
+            const daysElapsed = hoursElapsed / 24;
             const profit = trade.initial_amount * trade.profit_multiplier * daysElapsed;
             return sum + profit;
           }, 0) || 0;
           
-          const basePrice = baseValue + (totalProfit * (i / 30));
-          const volatility = 2 + Math.sin(i * 0.1) * 0.5;
-          const open = basePrice + Math.sin(i * 0.3) * volatility;
-          const close = basePrice + Math.sin((i + 1) * 0.3) * volatility;
-          const high = Math.max(open, close) + Math.random() * volatility;
-          const low = Math.min(open, close) - Math.random() * volatility;
-          
-          return {
-            time: new Date(Date.now() - (29 - i) * 60000).toLocaleTimeString('en-US', { 
-              hour: '2-digit', 
-              minute: '2-digit' 
-            }),
-            open: Number(open.toFixed(2)),
-            high: Number(high.toFixed(2)),
-            low: Number(low.toFixed(2)),
-            close: Number(close.toFixed(2)),
-          };
+          if (tradingEngine === 'rising') {
+            // Rising engine: Only upward movement
+            const basePrice = baseValue + (totalProfit * (i / 30));
+            const volatility = 2 + Math.sin(i * 0.1) * 0.5;
+            const open = basePrice + Math.sin(i * 0.3) * volatility;
+            const close = basePrice + Math.sin((i + 1) * 0.3) * volatility + (Math.random() * 0.5); // Slight upward bias
+            const high = Math.max(open, close) + Math.random() * volatility;
+            const low = Math.min(open, close) - Math.random() * volatility * 0.3; // Less downward movement
+            
+            return {
+              time: new Date(Date.now() - (29 - i) * 60000).toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              }),
+              open: Number(open.toFixed(2)),
+              high: Number(high.toFixed(2)),
+              low: Number(Math.max(low, baseValue * 0.9).toFixed(2)), // Floor to prevent big dips
+              close: Number(Math.max(close, open).toFixed(2)), // Always close higher or equal
+            };
+          } else {
+            // General engine: Real market-like movement (up and down)
+            const volatilityFactor = 8 + Math.sin(i * 0.2) * 3;
+            const trend = Math.sin(i * 0.15) * 15; // Creates waves
+            const randomWalk = (Math.random() - 0.5) * volatilityFactor;
+            const basePrice = baseValue + trend + randomWalk + (totalProfit * 0.1);
+            
+            const open = basePrice + (Math.random() - 0.5) * 3;
+            const close = basePrice + (Math.random() - 0.5) * 3;
+            const high = Math.max(open, close) + Math.random() * 2;
+            const low = Math.min(open, close) - Math.random() * 2;
+            
+            return {
+              time: new Date(Date.now() - (29 - i) * 60000).toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              }),
+              open: Number(open.toFixed(2)),
+              high: Number(high.toFixed(2)),
+              low: Number(low.toFixed(2)),
+              close: Number(close.toFixed(2)),
+            };
+          }
         });
 
         setChartData(data);
@@ -275,7 +350,7 @@ const TradingChart = () => {
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, tradingEngine]);
 
   const handleTrade = async (type: 'buy' | 'sell') => {
     if (!selectedSignal || !user) {
@@ -447,11 +522,23 @@ const TradingChart = () => {
     );
   }
 
-  const totalProfit = activeTrades.reduce((sum, trade) => {
+  // Calculate total profit based on trading engine
+  const calculateProfit = (trade: ActiveTrade) => {
     const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
-    const daysElapsed = hoursElapsed / 24; // Convert to days to match database calculation
-    return sum + (trade.initial_amount * trade.profit_multiplier * daysElapsed);
-  }, 0);
+    const daysElapsed = hoursElapsed / 24;
+    
+    if (tradingEngine === 'rising') {
+      // Rising: Always positive growth
+      return trade.initial_amount * trade.profit_multiplier * daysElapsed;
+    } else {
+      // General: Fluctuating profits (can be negative)
+      const volatility = Math.sin(Date.now() / 10000 + trade.id.charCodeAt(0)) * 0.5;
+      const baseProfit = trade.initial_amount * trade.profit_multiplier * daysElapsed;
+      return baseProfit * (1 + volatility);
+    }
+  };
+
+  const totalProfit = activeTrades.reduce((sum, trade) => sum + calculateProfit(trade), 0);
 
   return (
     <div className="space-y-6">
@@ -462,12 +549,22 @@ const TradingChart = () => {
             <CardTitle className="flex items-center">
               <Activity className="mr-2 h-5 w-5 text-crypto-blue" />
               Live Trading Chart
+              <Badge 
+                variant="outline" 
+                className={`ml-3 ${tradingEngine === 'rising' ? 'border-green-500 text-green-500' : 'border-amber-500 text-amber-500'}`}
+              >
+                {tradingEngine === 'rising' ? (
+                  <><TrendingUp className="h-3 w-3 mr-1" /> Rising</>
+                ) : (
+                  <><TrendingDown className="h-3 w-3 mr-1" /> General</>
+                )}
+              </Badge>
             </CardTitle>
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <p className="text-sm text-foreground/70">Total Profit</p>
-                <p className="text-lg font-bold text-crypto-green">
-                  +${totalProfit.toFixed(2)}
+                <p className={`text-lg font-bold ${totalProfit >= 0 ? 'text-crypto-green' : 'text-destructive'}`}>
+                  {totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(2)}
                 </p>
               </div>
             </div>
@@ -694,7 +791,7 @@ const TradingChart = () => {
             <div className="space-y-3">
               {activeTrades.map((trade) => {
                 const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
-                const currentProfit = trade.initial_amount * trade.profit_multiplier * (hoursElapsed / 24);
+                const currentProfit = calculateProfit(trade);
                 
                 return (
                   <div key={trade.id} className="flex items-center justify-between p-3 bg-background rounded-lg border">
@@ -710,7 +807,9 @@ const TradingChart = () => {
                     </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-crypto-green">+${currentProfit.toFixed(2)}</p>
+                      <p className={`font-bold ${currentProfit >= 0 ? 'text-crypto-green' : 'text-destructive'}`}>
+                        {currentProfit >= 0 ? '+' : ''}${currentProfit.toFixed(2)}
+                      </p>
                       <p className="text-sm text-foreground/70">
                         {hoursElapsed.toFixed(1)}h ago
                       </p>

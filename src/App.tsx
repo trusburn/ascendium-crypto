@@ -29,6 +29,7 @@ import AdminContact from './pages/admin/AdminContact';
 import AdminEmail from './pages/admin/AdminEmail';
 import AdminWallets from './pages/admin/AdminWallets';
 import AdminCrypto from "./pages/admin/AdminCrypto";
+import AdminTradingEngine from "./pages/admin/AdminTradingEngine";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminLayout } from "./components/AdminLayout";
@@ -70,6 +71,7 @@ const App = () => (
           <Route path="/admin/email" element={<ProtectedRoute adminOnly><AdminLayout><AdminEmail /></AdminLayout></ProtectedRoute>} />
           <Route path="/admin/wallets" element={<ProtectedRoute adminOnly><AdminLayout><AdminWallets /></AdminLayout></ProtectedRoute>} />
           <Route path="/admin/crypto" element={<ProtectedRoute adminOnly><AdminLayout><AdminCrypto /></AdminLayout></ProtectedRoute>} />
+          <Route path="/admin/trading-engine" element={<ProtectedRoute adminOnly><AdminLayout><AdminTradingEngine /></AdminLayout></ProtectedRoute>} />
           <Route path="/admin/management" element={<ProtectedRoute adminOnly><AdminLayout><AdminManagement /></AdminLayout></ProtectedRoute>} />
           <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminLayout><AdminSettings /></AdminLayout></ProtectedRoute>} />
           
