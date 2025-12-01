@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, UserCheck, UserX, Eye, Shield } from "lucide-react";
+import { Search, UserCheck, UserX, Eye, Shield, StopCircle } from "lucide-react";
 
 interface UserProfile {
   id: string;
@@ -95,6 +95,45 @@ export default function AdminUsers() {
       });
 
       fetchUsers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const stopUserTrading = async (userId: string, username: string) => {
+    try {
+      const { data: activeTrades, error: fetchError } = await supabase
+        .from('trades')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('status', 'active');
+
+      if (fetchError) throw fetchError;
+
+      if (!activeTrades || activeTrades.length === 0) {
+        toast({
+          title: "No Active Trades",
+          description: `${username || 'User'} has no active trades to stop`,
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('trades')
+        .update({ status: 'stopped' })
+        .eq('user_id', userId)
+        .eq('status', 'active');
+
+      if (error) throw error;
+
+      toast({
+        title: "Trading Stopped",
+        description: `Stopped ${activeTrades.length} active trade(s) for ${username || 'user'}`,
+      });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -219,14 +258,25 @@ export default function AdminUsers() {
                             variant="outline"
                             onClick={() => setSelectedUser(user)}
                             className="h-8 w-8 p-0"
+                            title="View Details"
                           >
                             <Eye className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => stopUserTrading(user.id, user.username)}
+                            className="h-8 w-8 p-0 bg-orange-500/20 hover:bg-orange-500/30 text-orange-500"
+                            title="Stop Trading"
+                          >
+                            <StopCircle className="h-3 w-3" />
                           </Button>
                           <Button
                             size="sm"
                             variant={user.is_frozen ? "default" : "destructive"}
                             onClick={() => toggleUserFreeze(user.id, user.is_frozen || false)}
                             className="h-8 w-8 p-0"
+                            title={user.is_frozen ? "Unfreeze User" : "Freeze User"}
                           >
                             {user.is_frozen ? (
                               <UserCheck className="h-3 w-3" />
