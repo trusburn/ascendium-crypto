@@ -12,7 +12,8 @@ import {
   DollarSign, 
   ArrowUpRight, 
   Plus,
-  Minus
+  Minus,
+  StopCircle
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -23,10 +24,17 @@ interface ProfileData {
   commissions: number;
 }
 
+interface ActiveTrade {
+  id: string;
+  status: string;
+}
+
 const Dashboard = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTrades, setActiveTrades] = useState<ActiveTrade[]>([]);
+  const [stoppingTrades, setStoppingTrades] = useState(false);
 
   const portfolioData = [
     { name: 'Bitcoin', value: 45, color: 'hsl(var(--crypto-gold))' },
@@ -67,6 +75,15 @@ const Dashboard = () => {
 
         console.log('💳 Dashboard profile data:', data);
         setProfile(data);
+
+        // Fetch active trades count
+        const { data: tradesData } = await supabase
+          .from('trades')
+          .select('id, status')
+          .eq('user_id', user.id)
+          .eq('status', 'active');
+        
+        setActiveTrades(tradesData || []);
       } catch (error) {
         console.error('Error:', error);
       } finally {
@@ -80,6 +97,42 @@ const Dashboard = () => {
     const interval = setInterval(fetchProfile, 30000);
     return () => clearInterval(interval);
   }, [user]);
+
+  const handleStopAllTrades = async () => {
+    if (!user || activeTrades.length === 0) {
+      toast({
+        title: "No Active Trades",
+        description: "You have no active trades to stop",
+      });
+      return;
+    }
+
+    setStoppingTrades(true);
+    try {
+      const { error } = await supabase
+        .from('trades')
+        .update({ status: 'stopped' })
+        .eq('user_id', user.id)
+        .eq('status', 'active');
+
+      if (error) throw error;
+
+      toast({
+        title: "Trading Stopped",
+        description: `Successfully stopped ${activeTrades.length} active trade(s)`,
+      });
+
+      setActiveTrades([]);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to stop trades",
+        variant: "destructive",
+      });
+    } finally {
+      setStoppingTrades(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -164,7 +217,7 @@ const Dashboard = () => {
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <Button className="h-20 flex flex-col bg-crypto-blue hover:bg-crypto-blue/90">
                 <Plus className="h-6 w-6 mb-2" />
                 Deposit
@@ -180,6 +233,15 @@ const Dashboard = () => {
               <Button variant="outline" className="h-20 flex flex-col border-crypto-gold text-crypto-gold hover:bg-crypto-gold hover:text-background">
                 <Wallet className="h-6 w-6 mb-2" />
                 Wallet
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                onClick={handleStopAllTrades}
+                disabled={stoppingTrades || activeTrades.length === 0}
+              >
+                <StopCircle className="h-6 w-6 mb-2" />
+                {stoppingTrades ? 'Stopping...' : `Stop Trading${activeTrades.length > 0 ? ` (${activeTrades.length})` : ''}`}
               </Button>
             </div>
           </CardContent>
