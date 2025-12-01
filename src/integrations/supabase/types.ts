@@ -380,6 +380,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_trading_engines: {
+        Row: {
+          created_at: string
+          engine_type: Database["public"]["Enums"]["trading_engine_type"]
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          engine_type?: Database["public"]["Enums"]["trading_engine_type"]
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          engine_type?: Database["public"]["Enums"]["trading_engine_type"]
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       withdrawals: {
         Row: {
           amount: number
@@ -431,6 +455,7 @@ export type Database = {
       update_trade_profits: { Args: never; Returns: undefined }
     }
     Enums: {
+      trading_engine_type: "default" | "rising" | "general"
       user_role: "admin" | "user"
     }
     CompositeTypes: {
@@ -559,6 +584,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      trading_engine_type: ["default", "rising", "general"],
       user_role: ["admin", "user"],
     },
   },

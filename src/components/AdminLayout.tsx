@@ -9,7 +9,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  Wallet
+  Wallet,
+  Activity
 } from 'lucide-react';
 import {
   Sidebar,
@@ -57,6 +58,12 @@ const adminNavItems = [
     url: '/admin/users', 
     icon: Users,
     description: 'User management and controls'
+  },
+  { 
+    title: 'Trading Engine', 
+    url: '/admin/trading-engine', 
+    icon: Activity,
+    description: 'Manage trading chart engines'
   },
   { 
     title: 'Content', 
