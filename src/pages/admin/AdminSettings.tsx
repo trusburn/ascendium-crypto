@@ -335,9 +335,8 @@ export default function AdminSettings() {
         <CardContent>
           <div className="flex gap-4">
             <Button 
-              variant="outline" 
               onClick={syncTradingProfits}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <RefreshCw className="h-4 w-4" />
               Sync Trading Profits
