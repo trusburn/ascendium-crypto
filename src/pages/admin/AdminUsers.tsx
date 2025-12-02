@@ -13,7 +13,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, UserCheck, UserX, Eye, Shield, StopCircle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Search, UserCheck, UserX, Eye, Shield, StopCircle, Trash2 } from "lucide-react";
 
 interface UserProfile {
   id: string;
@@ -138,6 +149,55 @@ export default function AdminUsers() {
       toast({
         title: "Error",
         description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const deleteUser = async (userId: string, username: string) => {
+    try {
+      // Delete in order to respect foreign key constraints
+      // 1. Delete trades
+      await supabase.from('trades').delete().eq('user_id', userId);
+      
+      // 2. Delete purchased signals
+      await supabase.from('purchased_signals').delete().eq('user_id', userId);
+      
+      // 3. Delete transactions
+      await supabase.from('transactions').delete().eq('user_id', userId);
+      
+      // 4. Delete deposits
+      await supabase.from('deposits').delete().eq('user_id', userId);
+      
+      // 5. Delete withdrawals
+      await supabase.from('withdrawals').delete().eq('user_id', userId);
+      
+      // 6. Delete user trading engines
+      await supabase.from('user_trading_engines').delete().eq('user_id', userId);
+      
+      // 7. Delete user roles
+      await supabase.from('user_roles').delete().eq('user_id', userId);
+      
+      // 8. Delete profile (this is the main user data in public schema)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (profileError) throw profileError;
+
+      toast({
+        title: "User Deleted",
+        description: `Successfully deleted ${username || 'user'} and all associated data`,
+      });
+
+      // Refresh the user list
+      fetchUsers();
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete user",
         variant: "destructive"
       });
     }
@@ -284,6 +344,38 @@ export default function AdminUsers() {
                               <UserX className="h-3 w-3" />
                             )}
                           </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="h-8 w-8 p-0"
+                                title="Delete User"
+                                disabled={user.role === 'admin'}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete User</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete <strong>{user.username || 'this user'}</strong>? 
+                                  This will permanently remove all their data including trades, transactions, 
+                                  deposits, and withdrawals. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteUser(user.id, user.username)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </TableCell>
                     </TableRow>
