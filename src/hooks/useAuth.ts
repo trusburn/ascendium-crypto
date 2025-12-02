@@ -7,6 +7,7 @@ export const useAuth = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminCheckComplete, setAdminCheckComplete] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener
@@ -14,13 +15,17 @@ export const useAuth = () => {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        setLoading(false);
         
         // Check admin status when user changes
         if (session?.user) {
-          checkAdminStatus(session.user.id);
+          // Use setTimeout to avoid Supabase deadlock
+          setTimeout(() => {
+            checkAdminStatus(session.user.id);
+          }, 0);
         } else {
           setIsAdmin(false);
+          setAdminCheckComplete(true);
+          setLoading(false);
         }
       }
     );
@@ -29,10 +34,12 @@ export const useAuth = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
       
       if (session?.user) {
         checkAdminStatus(session.user.id);
+      } else {
+        setAdminCheckComplete(true);
+        setLoading(false);
       }
     });
 
@@ -45,6 +52,9 @@ export const useAuth = () => {
       setIsAdmin(data || false);
     } catch (error) {
       setIsAdmin(false);
+    } finally {
+      setAdminCheckComplete(true);
+      setLoading(false);
     }
   };
 
@@ -61,7 +71,7 @@ export const useAuth = () => {
   return {
     user,
     session,
-    loading,
+    loading: loading || !adminCheckComplete,
     signOut,
     isAuthenticated: !!user,
     isAdmin
