@@ -8,6 +8,7 @@ import Testimonials from "./pages/Testimonials";
 import CryptoNews from "./pages/CryptoNews";
 import Contact from "./pages/Contact";
 import Auth from "./pages/Auth";
+import AdminLogin from "./pages/AdminLogin";
 import Dashboard from "./pages/Dashboard";
 import DashboardTransactions from "./pages/DashboardTransactions";
 import DashboardDeposit from "./pages/DashboardDeposit";
@@ -48,6 +49,7 @@ const App = () => (
           <Route path="/crypto-news" element={<CryptoNews />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/adminlog" element={<AdminLogin />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/dashboard/transactions" element={<ProtectedRoute><DashboardTransactions /></ProtectedRoute>} />
           <Route path="/dashboard/deposit" element={<ProtectedRoute><DashboardDeposit /></ProtectedRoute>} />
