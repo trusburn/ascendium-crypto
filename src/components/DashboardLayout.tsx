@@ -14,8 +14,7 @@ import {
   Settings, 
   LogOut,
   Menu,
-  X,
-  Shield
+  X
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -43,7 +42,6 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { name: 'Tutorial', href: '/dashboard/tutorial', icon: BookOpen },
     { name: 'Profile', href: '/dashboard/profile', icon: User },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
-    { name: 'Admin Panel', href: '/admin', icon: Shield },
   ];
 
   return (
