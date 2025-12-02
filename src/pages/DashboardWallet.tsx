@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +19,7 @@ interface WalletData {
 
 const DashboardWallet = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [walletData, setWalletData] = useState<WalletData>({
     btc_balance: 0,
     eth_balance: 0,
@@ -200,15 +202,26 @@ const DashboardWallet = () => {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-3">
-              <Button className="bg-crypto-gradient hover:opacity-90 text-background h-12">
+              <Button 
+                className="bg-crypto-gradient hover:opacity-90 text-background h-12"
+                onClick={() => navigate('/dashboard/deposit')}
+              >
                 <DollarSign className="mr-2 h-4 w-4" />
                 Deposit Funds
               </Button>
-              <Button variant="outline" className="h-12">
+              <Button 
+                variant="outline" 
+                className="h-12"
+                onClick={() => navigate('/dashboard/signals')}
+              >
                 <TrendingUp className="mr-2 h-4 w-4" />
                 Buy Signals
               </Button>
-              <Button variant="outline" className="h-12">
+              <Button 
+                variant="outline" 
+                className="h-12"
+                onClick={() => navigate('/dashboard/withdrawal')}
+              >
                 <Wallet className="mr-2 h-4 w-4" />
                 Withdraw
               </Button>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ interface ActiveTrade {
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTrades, setActiveTrades] = useState<ActiveTrade[]>([]);
@@ -218,19 +220,34 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <Button className="h-20 flex flex-col bg-crypto-blue hover:bg-crypto-blue/90">
+              <Button 
+                className="h-20 flex flex-col bg-crypto-blue hover:bg-crypto-blue/90"
+                onClick={() => navigate('/dashboard/deposit')}
+              >
                 <Plus className="h-6 w-6 mb-2" />
                 Deposit
               </Button>
-              <Button variant="outline" className="h-20 flex flex-col border-crypto-purple text-crypto-purple hover:bg-crypto-purple hover:text-background">
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col border-crypto-purple text-crypto-purple hover:bg-crypto-purple hover:text-background"
+                onClick={() => navigate('/dashboard/withdrawal')}
+              >
                 <Minus className="h-6 w-6 mb-2" />
                 Withdraw
               </Button>
-              <Button variant="outline" className="h-20 flex flex-col border-crypto-green text-crypto-green hover:bg-crypto-green hover:text-background">
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col border-crypto-green text-crypto-green hover:bg-crypto-green hover:text-background"
+                onClick={() => navigate('/dashboard/signals')}
+              >
                 <TrendingUp className="h-6 w-6 mb-2" />
                 Trade
               </Button>
-              <Button variant="outline" className="h-20 flex flex-col border-crypto-gold text-crypto-gold hover:bg-crypto-gold hover:text-background">
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col border-crypto-gold text-crypto-gold hover:bg-crypto-gold hover:text-background"
+                onClick={() => navigate('/dashboard/wallet')}
+              >
                 <Wallet className="h-6 w-6 mb-2" />
                 Wallet
               </Button>
