@@ -29,10 +29,18 @@ const AdminWallets = () => {
 
       if (error) throw error;
 
-      const walletsData: any = {};
+      const walletsData: Record<string, string> = {};
       data?.forEach((setting) => {
         const cryptoType = setting.key.replace('wallet_', '');
-        walletsData[cryptoType] = setting.value || '';
+        // Extract string from jsonb value
+        const value = setting.value;
+        if (typeof value === 'string') {
+          walletsData[cryptoType] = value;
+        } else if (value && typeof value === 'object' && 'address' in value) {
+          walletsData[cryptoType] = (value as { address: string }).address;
+        } else {
+          walletsData[cryptoType] = '';
+        }
       });
 
       setWallets({
@@ -53,12 +61,12 @@ const AdminWallets = () => {
   const handleSaveWallet = async (cryptoType: string, address: string) => {
     setLoading(true);
     try {
-      // Store as plain string value (JSON column accepts strings)
+      // Store as JSON object with address property for jsonb column
       const { error } = await supabase
         .from('admin_settings')
         .upsert({
           key: `wallet_${cryptoType}`,
-          value: address,
+          value: { address: address } as unknown as string,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'key'

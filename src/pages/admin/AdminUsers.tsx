@@ -93,23 +93,36 @@ export default function AdminUsers() {
 
   const toggleUserFreeze = async (userId: string, currentFrozenState: boolean) => {
     try {
-      const { error } = await supabase
+      const newFrozenState = !currentFrozenState;
+      
+      const { data, error } = await supabase
         .from('profiles')
-        .update({ is_frozen: !currentFrozenState } as any)
-        .eq('id', userId);
+        .update({ is_frozen: newFrozenState })
+        .eq('id', userId)
+        .select('is_frozen')
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Freeze toggle error:', error);
+        throw error;
+      }
+
+      console.log('Freeze toggle result:', data);
 
       toast({
         title: "Success",
-        description: `User ${!currentFrozenState ? 'frozen' : 'unfrozen'} successfully`
+        description: `User ${newFrozenState ? 'frozen' : 'unfrozen'} successfully`
       });
 
-      fetchUsers();
+      // Update local state immediately
+      setUsers(prev => prev.map(u => 
+        u.id === userId ? { ...u, is_frozen: newFrozenState } : u
+      ));
     } catch (error: any) {
+      console.error('Freeze error:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to update user status",
         variant: "destructive"
       });
     }
@@ -124,7 +137,10 @@ export default function AdminUsers() {
         .eq('user_id', userId)
         .eq('status', 'active');
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Error fetching trades:', fetchError);
+        throw fetchError;
+      }
 
       if (!activeTrades || activeTrades.length === 0) {
         toast({
@@ -134,39 +150,50 @@ export default function AdminUsers() {
         return;
       }
 
-      // Stop all trades
-      const { error } = await supabase
-        .from('trades')
-        .update({ status: 'stopped' })
-        .eq('user_id', userId)
-        .eq('status', 'active');
+      console.log('Stopping trades for user:', userId, 'Trades:', activeTrades);
 
-      if (error) throw error;
+      // Stop all trades - admin needs UPDATE permission on trades
+      const tradeIds = activeTrades.map(t => t.id);
+      
+      for (const tradeId of tradeIds) {
+        const { error: updateError } = await supabase
+          .from('trades')
+          .update({ status: 'stopped' })
+          .eq('id', tradeId);
+        
+        if (updateError) {
+          console.error('Error stopping trade:', tradeId, updateError);
+        }
+      }
 
       // Create transaction records for each stopped trade
-      const transactionInserts = activeTrades.map(trade => ({
-        user_id: userId,
-        type: 'trade_closed',
-        amount: trade.current_profit || 0,
-        description: `${trade.trade_type.toUpperCase()} trade stopped by admin - Initial: $${trade.initial_amount}, Profit/Loss: $${(trade.current_profit || 0).toFixed(2)}`,
-      }));
+      for (const trade of activeTrades) {
+        const { error: txError } = await supabase
+          .from('transactions')
+          .insert({
+            user_id: userId,
+            type: 'trade_closed',
+            amount: trade.current_profit || 0,
+            description: `${trade.trade_type.toUpperCase()} trade stopped by admin - Initial: $${trade.initial_amount}, Profit/Loss: $${(trade.current_profit || 0).toFixed(2)}`,
+          });
 
-      const { error: txError } = await supabase
-        .from('transactions')
-        .insert(transactionInserts);
-
-      if (txError) {
-        console.error('Error creating transactions:', txError);
+        if (txError) {
+          console.error('Error creating transaction:', txError);
+        }
       }
 
       toast({
         title: "Trading Stopped",
         description: `Stopped ${activeTrades.length} active trade(s) for ${username || 'user'}. Transactions recorded.`,
       });
+
+      // Refresh the users list to show updated state
+      fetchUsers();
     } catch (error: any) {
+      console.error('Stop trading error:', error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to stop trades",
         variant: "destructive"
       });
     }
