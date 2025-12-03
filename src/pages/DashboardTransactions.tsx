@@ -124,6 +124,8 @@ const DashboardTransactions = () => {
         return <ArrowUpRight className="h-4 w-4 text-crypto-green" />;
       case 'withdrawal':
         return <ArrowDownLeft className="h-4 w-4 text-destructive" />;
+      case 'trade_closed':
+        return <DollarSign className="h-4 w-4 text-crypto-gold" />;
       default:
         return <DollarSign className="h-4 w-4 text-crypto-blue" />;
     }
@@ -135,6 +137,8 @@ const DashboardTransactions = () => {
         return <Badge className="bg-crypto-green/20 text-crypto-green border-crypto-green">Deposit</Badge>;
       case 'withdrawal':
         return <Badge variant="destructive">Withdrawal</Badge>;
+      case 'trade_closed':
+        return <Badge className="bg-crypto-gold/20 text-crypto-gold border-crypto-gold">Trade Closed</Badge>;
       default:
         return <Badge variant="secondary">{type}</Badge>;
     }
@@ -219,10 +223,14 @@ const DashboardTransactions = () => {
                           ? 'text-crypto-green' 
                           : transaction.type.toLowerCase() === 'withdrawal'
                           ? 'text-destructive'
+                          : transaction.type.toLowerCase() === 'trade_closed'
+                          ? (transaction.amount >= 0 ? 'text-crypto-green' : 'text-destructive')
                           : 'text-foreground'
                       }`}>
-                        {transaction.type.toLowerCase() === 'deposit' ? '+' : '-'}
-                        ${transaction.amount.toLocaleString()}
+                        {transaction.type.toLowerCase() === 'deposit' ? '+' : 
+                         transaction.type.toLowerCase() === 'withdrawal' ? '-' :
+                         transaction.type.toLowerCase() === 'trade_closed' ? (transaction.amount >= 0 ? '+' : '') : ''}
+                        ${Math.abs(transaction.amount).toLocaleString()}
                       </div>
                     </div>
                   </div>

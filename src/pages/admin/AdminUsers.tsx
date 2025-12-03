@@ -117,9 +117,10 @@ export default function AdminUsers() {
 
   const stopUserTrading = async (userId: string, username: string) => {
     try {
+      // Fetch active trades with details
       const { data: activeTrades, error: fetchError } = await supabase
         .from('trades')
-        .select('id')
+        .select('id, initial_amount, current_profit, trade_type')
         .eq('user_id', userId)
         .eq('status', 'active');
 
@@ -133,6 +134,7 @@ export default function AdminUsers() {
         return;
       }
 
+      // Stop all trades
       const { error } = await supabase
         .from('trades')
         .update({ status: 'stopped' })
@@ -141,9 +143,25 @@ export default function AdminUsers() {
 
       if (error) throw error;
 
+      // Create transaction records for each stopped trade
+      const transactionInserts = activeTrades.map(trade => ({
+        user_id: userId,
+        type: 'trade_closed',
+        amount: trade.current_profit || 0,
+        description: `${trade.trade_type.toUpperCase()} trade stopped by admin - Initial: $${trade.initial_amount}, Profit/Loss: $${(trade.current_profit || 0).toFixed(2)}`,
+      }));
+
+      const { error: txError } = await supabase
+        .from('transactions')
+        .insert(transactionInserts);
+
+      if (txError) {
+        console.error('Error creating transactions:', txError);
+      }
+
       toast({
         title: "Trading Stopped",
-        description: `Stopped ${activeTrades.length} active trade(s) for ${username || 'user'}`,
+        description: `Stopped ${activeTrades.length} active trade(s) for ${username || 'user'}. Transactions recorded.`,
       });
     } catch (error: any) {
       toast({

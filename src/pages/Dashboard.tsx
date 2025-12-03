@@ -111,17 +111,50 @@ const Dashboard = () => {
 
     setStoppingTrades(true);
     try {
-      const { error } = await supabase
+      // Fetch active trades with details before stopping
+      const { data: tradesData, error: fetchError } = await supabase
+        .from('trades')
+        .select('id, initial_amount, current_profit, trade_type, signal_id')
+        .eq('user_id', user.id)
+        .eq('status', 'active');
+
+      if (fetchError) throw fetchError;
+
+      // Get asset info for each trade
+      const { data: assetsData } = await supabase
+        .from('tradeable_assets')
+        .select('id, symbol');
+
+      // Stop all trades
+      const { error: updateError } = await supabase
         .from('trades')
         .update({ status: 'stopped' })
         .eq('user_id', user.id)
         .eq('status', 'active');
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Create transaction records for each stopped trade
+      if (tradesData && tradesData.length > 0) {
+        const transactionInserts = tradesData.map(trade => ({
+          user_id: user.id,
+          type: 'trade_closed',
+          amount: trade.current_profit || 0,
+          description: `${trade.trade_type.toUpperCase()} trade closed - Initial: $${trade.initial_amount}, Profit/Loss: $${(trade.current_profit || 0).toFixed(2)}`,
+        }));
+
+        const { error: txError } = await supabase
+          .from('transactions')
+          .insert(transactionInserts);
+
+        if (txError) {
+          console.error('Error creating transactions:', txError);
+        }
+      }
 
       toast({
         title: "Trading Stopped",
-        description: `Successfully stopped ${activeTrades.length} active trade(s)`,
+        description: `Successfully stopped ${activeTrades.length} active trade(s). Transaction records created.`,
       });
 
       setActiveTrades([]);

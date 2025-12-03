@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useFrozenStatus } from '@/hooks/useFrozenStatus';
 import { useAdminSettings } from '@/hooks/useAdminSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowDownLeft, AlertTriangle } from 'lucide-react';
@@ -13,6 +14,7 @@ import { toast } from '@/hooks/use-toast';
 
 const DashboardWithdrawal = () => {
   const { user } = useAuth();
+  const { isFrozen } = useFrozenStatus();
   const { settings, isLoading: settingsLoading } = useAdminSettings();
   const [amount, setAmount] = useState('');
   const [cryptoType, setCryptoType] = useState('bitcoin');
@@ -29,6 +31,15 @@ const DashboardWithdrawal = () => {
   ];
 
   const handleSubmitWithdrawal = async () => {
+    if (isFrozen) {
+      toast({
+        title: "Account Frozen",
+        description: "Your account is frozen. You cannot make withdrawals.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!amount || !cryptoType || !walletAddress || !user) {
       toast({
         title: "Missing Information",

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useFrozenStatus } from '@/hooks/useFrozenStatus';
 import { Signal, TrendingUp, Zap } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -18,6 +19,7 @@ interface SignalData {
 
 const DashboardSignals = () => {
   const { user } = useAuth();
+  const { isFrozen } = useFrozenStatus();
   const [signals, setSignals] = useState<SignalData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,6 +54,15 @@ const DashboardSignals = () => {
 
   const handlePurchaseSignal = async (signalId: string, signalName: string) => {
     if (!user) return;
+
+    if (isFrozen) {
+      toast({
+        title: "Account Frozen",
+        description: "Your account is frozen. You cannot make trades.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       // Get signal details and user balance
