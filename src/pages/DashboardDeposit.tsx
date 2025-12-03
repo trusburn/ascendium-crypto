@@ -49,17 +49,17 @@ const DashboardDeposit = () => {
 
       if (error) throw error;
 
-      const addresses: any = {};
+      const addresses: Record<string, string> = {};
       data?.forEach((setting) => {
         const cryptoType = setting.key.replace('wallet_', '');
-        // Handle both string and JSON values
         const value = setting.value;
-        if (typeof value === 'string') {
+        // Handle JSON object with address property
+        if (value && typeof value === 'object' && 'address' in value) {
+          addresses[cryptoType] = (value as { address: string }).address;
+        } else if (typeof value === 'string') {
           addresses[cryptoType] = value;
-        } else if (value && typeof value === 'object') {
-          addresses[cryptoType] = JSON.stringify(value).replace(/"/g, '');
         } else {
-          addresses[cryptoType] = value || '';
+          addresses[cryptoType] = '';
         }
       });
 
