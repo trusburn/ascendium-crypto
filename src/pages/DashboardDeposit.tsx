@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
+import { useFrozenStatus } from '@/hooks/useFrozenStatus';
 import { useAdminSettings } from '@/hooks/useAdminSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { ArrowUpRight, Copy, CheckCircle } from 'lucide-react';
@@ -13,6 +14,7 @@ import { toast } from '@/hooks/use-toast';
 
 const DashboardDeposit = () => {
   const { user } = useAuth();
+  const { isFrozen } = useFrozenStatus();
   const { settings, isLoading: settingsLoading } = useAdminSettings();
   const [amount, setAmount] = useState('');
   const [cryptoType, setCryptoType] = useState('bitcoin');
@@ -50,13 +52,21 @@ const DashboardDeposit = () => {
       const addresses: any = {};
       data?.forEach((setting) => {
         const cryptoType = setting.key.replace('wallet_', '');
-        addresses[cryptoType] = setting.value || '';
+        // Handle both string and JSON values
+        const value = setting.value;
+        if (typeof value === 'string') {
+          addresses[cryptoType] = value;
+        } else if (value && typeof value === 'object') {
+          addresses[cryptoType] = JSON.stringify(value).replace(/"/g, '');
+        } else {
+          addresses[cryptoType] = value || '';
+        }
       });
 
       setWalletAddresses({
-        bitcoin: addresses.bitcoin || '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-        ethereum: addresses.ethereum || '0x742d35cc6635c0532925a3b8d23c82c6b1234567',
-        usdt: addresses.usdt || 'TQn9Y2khEsLJW1ChVWFMSMeRDow5oREqjK',
+        bitcoin: addresses.bitcoin || '',
+        ethereum: addresses.ethereum || '',
+        usdt: addresses.usdt || '',
       });
     } catch (error) {
       console.error('Error fetching wallet addresses:', error);
@@ -102,6 +112,15 @@ const DashboardDeposit = () => {
   };
 
   const handleSubmitDeposit = async () => {
+    if (isFrozen) {
+      toast({
+        title: "Account Frozen",
+        description: "Your account is frozen. You cannot make deposits.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!amount || !cryptoType || !walletAddress || !user) {
       toast({
         title: "Missing Information",

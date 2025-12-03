@@ -53,6 +53,7 @@ const AdminWallets = () => {
   const handleSaveWallet = async (cryptoType: string, address: string) => {
     setLoading(true);
     try {
+      // Store as plain string value (JSON column accepts strings)
       const { error } = await supabase
         .from('admin_settings')
         .upsert({
@@ -67,7 +68,7 @@ const AdminWallets = () => {
 
       toast({
         title: "Success",
-        description: `${cryptoType.toUpperCase()} wallet address updated`,
+        description: `${cryptoType.toUpperCase()} wallet address updated. Users will now see this address.`,
       });
     } catch (error) {
       console.error('Error saving wallet address:', error);

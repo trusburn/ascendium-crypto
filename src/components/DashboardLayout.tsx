@@ -1,7 +1,9 @@
 import { ReactNode, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { useFrozenStatus } from '@/hooks/useFrozenStatus';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
 import { 
   LayoutDashboard, 
   Wallet, 
@@ -23,6 +25,7 @@ interface DashboardLayoutProps {
 
 export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const { signOut } = useAuth();
+  const { isFrozen } = useFrozenStatus();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -125,6 +128,16 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <div className="w-10 lg:w-0"></div>
           </div>
         </header>
+
+        {/* Frozen Account Banner */}
+        {isFrozen && (
+          <div className="bg-destructive text-destructive-foreground p-4 flex items-center justify-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            <span className="font-semibold">
+              Your account has been frozen. You cannot make deposits, withdrawals, or trades. Please contact support.
+            </span>
+          </div>
+        )}
 
         {/* Page Content */}
         <main className="p-3 sm:p-4 lg:p-6 relative z-10">
