@@ -111,36 +111,47 @@ const Dashboard = () => {
 
     setStoppingTrades(true);
     try {
-      // Fetch active trades with details before stopping
-      const { data: tradesData, error: fetchError } = await supabase
-        .from('trades')
-        .select('id, initial_amount, current_profit, trade_type, signal_id')
-        .eq('user_id', user.id)
-        .eq('status', 'active');
+      // Call the database function to stop all trades and update balances
+      const { data: result, error: rpcError } = await supabase.rpc('stop_all_user_trades', {
+        p_user_id: user.id
+      });
 
-      if (fetchError) throw fetchError;
+      if (rpcError) throw rpcError;
 
-      // Get asset info for each trade
-      const { data: assetsData } = await supabase
-        .from('tradeable_assets')
-        .select('id, symbol');
+      const resultData = result as {
+        success: boolean;
+        message: string;
+        trades_stopped: number;
+        total_profit: number;
+        trade_details: Array<{
+          id: string;
+          trade_type: string;
+          initial_amount: number;
+          profit: number;
+          entry_price: number;
+          exit_price: number;
+          asset_symbol: string;
+          asset_name: string;
+          started_at: string;
+          stopped_at: string;
+        }>;
+      };
 
-      // Stop all trades
-      const { error: updateError } = await supabase
-        .from('trades')
-        .update({ status: 'stopped' })
-        .eq('user_id', user.id)
-        .eq('status', 'active');
+      if (!resultData.success) {
+        toast({
+          title: "No Active Trades",
+          description: resultData.message,
+        });
+        return;
+      }
 
-      if (updateError) throw updateError;
-
-      // Create transaction records for each stopped trade
-      if (tradesData && tradesData.length > 0) {
-        const transactionInserts = tradesData.map(trade => ({
+      // Create detailed transaction records for each stopped trade
+      if (resultData.trade_details && resultData.trade_details.length > 0) {
+        const transactionInserts = resultData.trade_details.map(trade => ({
           user_id: user.id,
-          type: 'trade_closed',
-          amount: trade.current_profit || 0,
-          description: `${trade.trade_type.toUpperCase()} trade closed - Initial: $${trade.initial_amount}, Profit/Loss: $${(trade.current_profit || 0).toFixed(2)}`,
+          type: trade.profit >= 0 ? 'trade_profit' : 'trade_loss',
+          amount: trade.profit,
+          description: `${trade.trade_type.toUpperCase()} ${trade.asset_symbol} | Entry: $${trade.entry_price?.toFixed(2) || '0.00'} → Exit: $${trade.exit_price?.toFixed(2) || '0.00'} | Invested: $${trade.initial_amount.toFixed(2)} | ${trade.profit >= 0 ? 'Profit' : 'Loss'}: $${Math.abs(trade.profit).toFixed(2)}`,
         }));
 
         const { error: txError } = await supabase
@@ -152,13 +163,25 @@ const Dashboard = () => {
         }
       }
 
+      // Refresh profile data to show updated balances
+      const { data: updatedProfile } = await supabase
+        .from('profiles')
+        .select('net_balance, total_invested, interest_earned, commissions')
+        .eq('id', user.id)
+        .single();
+
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+      }
+
       toast({
-        title: "Trading Stopped",
-        description: `Successfully stopped ${activeTrades.length} active trade(s). Transaction records created.`,
+        title: "Trading Stopped Successfully",
+        description: `Stopped ${resultData.trades_stopped} trade(s). Total profit: $${resultData.total_profit.toFixed(2)} added to your balance.`,
       });
 
       setActiveTrades([]);
     } catch (error: any) {
+      console.error('Stop trades error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to stop trades",

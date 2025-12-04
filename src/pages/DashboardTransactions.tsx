@@ -125,7 +125,10 @@ const DashboardTransactions = () => {
       case 'withdrawal':
         return <ArrowDownLeft className="h-4 w-4 text-destructive" />;
       case 'trade_closed':
-        return <DollarSign className="h-4 w-4 text-crypto-gold" />;
+      case 'trade_profit':
+        return <DollarSign className="h-4 w-4 text-crypto-green" />;
+      case 'trade_loss':
+        return <DollarSign className="h-4 w-4 text-destructive" />;
       default:
         return <DollarSign className="h-4 w-4 text-crypto-blue" />;
     }
@@ -139,6 +142,10 @@ const DashboardTransactions = () => {
         return <Badge variant="destructive">Withdrawal</Badge>;
       case 'trade_closed':
         return <Badge className="bg-crypto-gold/20 text-crypto-gold border-crypto-gold">Trade Closed</Badge>;
+      case 'trade_profit':
+        return <Badge className="bg-crypto-green/20 text-crypto-green border-crypto-green">Trade Profit</Badge>;
+      case 'trade_loss':
+        return <Badge variant="destructive">Trade Loss</Badge>;
       default:
         return <Badge variant="secondary">{type}</Badge>;
     }
@@ -219,16 +226,16 @@ const DashboardTransactions = () => {
                     </div>
                     <div className="text-right">
                       <div className={`font-bold ${
-                        transaction.type.toLowerCase() === 'deposit' 
+                        transaction.type.toLowerCase() === 'deposit' || transaction.type.toLowerCase() === 'trade_profit'
                           ? 'text-crypto-green' 
-                          : transaction.type.toLowerCase() === 'withdrawal'
+                          : transaction.type.toLowerCase() === 'withdrawal' || transaction.type.toLowerCase() === 'trade_loss'
                           ? 'text-destructive'
                           : transaction.type.toLowerCase() === 'trade_closed'
                           ? (transaction.amount >= 0 ? 'text-crypto-green' : 'text-destructive')
                           : 'text-foreground'
                       }`}>
-                        {transaction.type.toLowerCase() === 'deposit' ? '+' : 
-                         transaction.type.toLowerCase() === 'withdrawal' ? '-' :
+                        {transaction.type.toLowerCase() === 'deposit' || transaction.type.toLowerCase() === 'trade_profit' ? '+' : 
+                         transaction.type.toLowerCase() === 'withdrawal' || transaction.type.toLowerCase() === 'trade_loss' ? '-' :
                          transaction.type.toLowerCase() === 'trade_closed' ? (transaction.amount >= 0 ? '+' : '') : ''}
                         ${Math.abs(transaction.amount).toLocaleString()}
                       </div>
