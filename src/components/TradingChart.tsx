@@ -384,14 +384,12 @@ const TradingChart = () => {
       }
 
       const currentBalance = Number(profileData.net_balance || 0);
-      const currentBaseBalance = Number(profileData.base_balance || 0);
-      const currentTotalInvested = Number(profileData.total_invested || 0);
 
-      // Check if user has enough balance for both buy and sell orders
+      // Check if user has enough balance
       if (currentBalance < tradeAmount) {
         toast({
           title: "Insufficient Balance",
-          description: `You need $${tradeAmount} to place this trade. Current balance: $${currentBalance}`,
+          description: `You need $${tradeAmount} to place this trade. Current balance: $${currentBalance.toFixed(2)}`,
           variant: "destructive",
         });
         return;
@@ -415,7 +413,33 @@ const TradingChart = () => {
 
       const entryPrice = assetData.current_price;
 
-      // Create the trade
+      // FIRST: Deduct balance using secure database function
+      const { data: balanceDeducted, error: balanceError } = await supabase
+        .rpc('deduct_trade_balance', {
+          p_user_id: user.id,
+          p_amount: tradeAmount,
+        });
+
+      if (balanceError) {
+        console.error('Error deducting balance:', balanceError);
+        toast({
+          title: "Error",
+          description: "Failed to process trade",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!balanceDeducted) {
+        toast({
+          title: "Insufficient Balance",
+          description: "Not enough balance to place this trade",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // THEN: Create the trade after balance is deducted
       const { error } = await supabase
         .from('trades')
         .insert({
@@ -435,31 +459,6 @@ const TradingChart = () => {
         toast({
           title: "Error",
           description: "Failed to create trade",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Update balances - deduct from both net_balance and base_balance
-      const newNetBalance = currentBalance - tradeAmount;
-      const newBaseBalance = currentBaseBalance - tradeAmount;
-      const newTotalInvested = currentTotalInvested + tradeAmount;
-
-      // Update profile with new balances
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          net_balance: newNetBalance,
-          base_balance: newBaseBalance,
-          total_invested: newTotalInvested,
-        })
-        .eq('id', user.id);
-
-      if (updateError) {
-        console.error('Error updating profile:', updateError);
-        toast({
-          title: "Warning",
-          description: "Trade created but balance update failed",
           variant: "destructive",
         });
         return;

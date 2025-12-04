@@ -445,6 +445,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      deduct_trade_balance: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: boolean
+      }
       get_user_role: {
         Args: { check_user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
