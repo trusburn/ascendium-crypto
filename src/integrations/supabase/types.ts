@@ -412,6 +412,7 @@ export type Database = {
           created_at: string | null
           crypto_type: string
           id: string
+          source: string
           status: string
           user_id: string
           wallet_address: string
@@ -423,6 +424,7 @@ export type Database = {
           created_at?: string | null
           crypto_type: string
           id?: string
+          source?: string
           status?: string
           user_id: string
           wallet_address: string
@@ -434,6 +436,7 @@ export type Database = {
           created_at?: string | null
           crypto_type?: string
           id?: string
+          source?: string
           status?: string
           user_id?: string
           wallet_address?: string

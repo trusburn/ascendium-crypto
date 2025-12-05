@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Check, X, TrendingDown } from "lucide-react";
+import { Search, Check, X, TrendingDown, Wallet, TrendingUp, Users } from "lucide-react";
 
 interface Withdrawal {
   id: string;
@@ -23,6 +23,7 @@ interface Withdrawal {
   crypto_type: string;
   wallet_address: string;
   status: string;
+  source: string;
   created_at: string;
   approved_at?: string;
   approved_by?: string;
@@ -74,15 +75,24 @@ export default function AdminWithdrawals() {
 
       if (fetchError) throw fetchError;
 
-      // Check if user has sufficient balance
+      // Get the source field (default to net_balance for older withdrawals)
+      const source = withdrawal.source || 'net_balance';
+
+      // Check if user has sufficient balance in the source
       const { data: profile } = await supabase
         .from('profiles')
-        .select('net_balance')
+        .select('net_balance, interest_earned, commissions, base_balance')
         .eq('id', withdrawal.user_id)
         .single();
 
-      if (!profile || profile.net_balance < withdrawal.amount) {
-        throw new Error('Insufficient balance for withdrawal');
+      if (!profile) {
+        throw new Error('User profile not found');
+      }
+
+      const sourceBalance = profile[source as keyof typeof profile] as number || 0;
+
+      if (sourceBalance < withdrawal.amount) {
+        throw new Error(`Insufficient ${getSourceLabel(source)} balance for withdrawal. Available: $${sourceBalance.toFixed(2)}`);
       }
 
       // Update withdrawal status
@@ -97,19 +107,41 @@ export default function AdminWithdrawals() {
 
       if (updateError) throw updateError;
 
-      // Deduct the amount from user's net_balance
-      const newBalance = profile.net_balance - withdrawal.amount;
+      // Deduct the amount from the appropriate source balance
+      const updateFields: Record<string, number> = {};
+      updateFields[source] = sourceBalance - withdrawal.amount;
+      
+      // Also update base_balance and net_balance if withdrawing from interest_earned or commissions
+      if (source === 'interest_earned' || source === 'commissions') {
+        // These don't affect base_balance, only the specific source
+        // But we need to recalculate net_balance
+        const newNetBalance = (profile.base_balance || 0) + 
+          (source === 'interest_earned' ? (profile.interest_earned || 0) - withdrawal.amount : (profile.interest_earned || 0)) +
+          (source === 'commissions' ? (profile.commissions || 0) - withdrawal.amount : (profile.commissions || 0));
+        updateFields['net_balance'] = newNetBalance;
+      } else if (source === 'net_balance') {
+        // Deducting from net_balance also deducts from base_balance
+        updateFields['base_balance'] = (profile.base_balance || 0) - withdrawal.amount;
+      }
       
       const { error: profileUpdateError } = await supabase
         .from('profiles')
-        .update({ net_balance: newBalance })
+        .update(updateFields)
         .eq('id', withdrawal.user_id);
 
       if (profileUpdateError) throw profileUpdateError;
 
+      // Create transaction record
+      await supabase.from('transactions').insert({
+        user_id: withdrawal.user_id,
+        type: 'withdrawal',
+        amount: -withdrawal.amount,
+        description: `Withdrawal of $${withdrawal.amount} from ${getSourceLabel(source)} to ${withdrawal.crypto_type} wallet`
+      });
+
       toast({
         title: "Success",
-        description: `Withdrawal of $${withdrawal.amount} approved and deducted from user balance`
+        description: `Withdrawal of $${withdrawal.amount} approved and deducted from ${getSourceLabel(source)}`
       });
 
       fetchWithdrawals();
@@ -147,6 +179,33 @@ export default function AdminWithdrawals() {
         description: error.message,
         variant: "destructive"
       });
+    }
+  };
+
+  const getSourceLabel = (source: string) => {
+    switch (source) {
+      case 'net_balance': return 'Net Balance';
+      case 'interest_earned': return 'Interest Earned';
+      case 'commissions': return 'Commissions';
+      default: return source;
+    }
+  };
+
+  const getSourceIcon = (source: string) => {
+    switch (source) {
+      case 'net_balance': return <Wallet className="h-3 w-3" />;
+      case 'interest_earned': return <TrendingUp className="h-3 w-3" />;
+      case 'commissions': return <Users className="h-3 w-3" />;
+      default: return <Wallet className="h-3 w-3" />;
+    }
+  };
+
+  const getSourceColor = (source: string) => {
+    switch (source) {
+      case 'net_balance': return 'bg-blue-500/10 text-blue-500 border-blue-500/30';
+      case 'interest_earned': return 'bg-green-500/10 text-green-500 border-green-500/30';
+      case 'commissions': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30';
+      default: return 'bg-gray-500/10 text-gray-500 border-gray-500/30';
     }
   };
 
@@ -301,11 +360,12 @@ export default function AdminWithdrawals() {
               position: 'relative'
             }}
           >
-            <Table style={{ minWidth: '1000px', width: '1000px' }}>
+            <Table style={{ minWidth: '1100px', width: '1100px' }}>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="whitespace-nowrap">User ID</TableHead>
                     <TableHead className="whitespace-nowrap">Amount</TableHead>
+                    <TableHead className="whitespace-nowrap">Source</TableHead>
                     <TableHead className="whitespace-nowrap">Crypto Type</TableHead>
                     <TableHead className="whitespace-nowrap">Wallet Address</TableHead>
                     <TableHead className="whitespace-nowrap">Status</TableHead>
@@ -321,6 +381,12 @@ export default function AdminWithdrawals() {
                       </TableCell>
                       <TableCell className="font-mono font-bold">
                         {formatCurrency(withdrawal.amount)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`${getSourceColor(withdrawal.source || 'net_balance')} flex items-center gap-1 w-fit`}>
+                          {getSourceIcon(withdrawal.source || 'net_balance')}
+                          {getSourceLabel(withdrawal.source || 'net_balance')}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{withdrawal.crypto_type}</Badge>
