@@ -95,7 +95,17 @@ const DashboardDeposit = () => {
       return;
     }
 
-    setWalletAddress(walletAddresses[cryptoType as keyof typeof walletAddresses]);
+    const selectedWallet = walletAddresses[cryptoType as keyof typeof walletAddresses];
+    if (!selectedWallet) {
+      toast({
+        title: "Wallet Not Available",
+        description: "The wallet address for this cryptocurrency is not configured. Please contact support or try another cryptocurrency.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setWalletAddress(selectedWallet);
     setProfitCalculated(true);
   };
 
