@@ -111,6 +111,15 @@ const Dashboard = () => {
 
     setStoppingTrades(true);
     try {
+      // IMPORTANT: Sync trading profits FIRST to ensure database has the latest profit values
+      console.log('🔄 Syncing profits before stopping trades...');
+      const { error: syncError } = await supabase.rpc('sync_trading_profits');
+      if (syncError) {
+        console.error('❌ Sync error before stop:', syncError);
+      } else {
+        console.log('✅ Profits synced successfully');
+      }
+
       // Call the database function to stop all trades and update balances
       const { data: result, error: rpcError } = await supabase.rpc('stop_all_user_trades', {
         p_user_id: user.id
