@@ -45,6 +45,22 @@ interface TradeableAsset {
 
 type TradingEngineType = 'rising' | 'general';
 
+// Helper function to calculate profit (used in multiple places)
+const calculateProfitForTrade = (trade: { started_at: string; initial_amount: number; profit_multiplier: number; id: string }, tradingEngine: TradingEngineType) => {
+  const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
+  const daysElapsed = hoursElapsed / 24;
+  
+  if (tradingEngine === 'rising') {
+    // Rising: Always positive growth
+    return trade.initial_amount * trade.profit_multiplier * daysElapsed;
+  } else {
+    // General: Fluctuating profits (can be negative)
+    const volatility = Math.sin(Date.now() / 10000 + trade.id.charCodeAt(0)) * 0.5;
+    const baseProfit = trade.initial_amount * trade.profit_multiplier * daysElapsed;
+    return baseProfit * (1 + volatility);
+  }
+};
+
 const TradingChart = () => {
   const { user } = useAuth();
   const [purchasedSignals, setPurchasedSignals] = useState<PurchasedSignal[]>([]);
@@ -333,17 +349,35 @@ const TradingChart = () => {
 
     fetchData();
     
-    // Update chart every 1 second and sync trading profits AGGRESSIVELY for live profit updates
+    // Update chart every 1 second and save profits directly to trades table
     const interval = setInterval(async () => {
-      console.log('🔄 Auto-syncing trading profits...');
+      console.log('🔄 Updating trade profits in database...');
       try {
+        // Update each active trade's current_profit directly in the database
+        for (const trade of activeTrades) {
+          const calculatedProfit = calculateProfitForTrade(trade, tradingEngine);
+          console.log(`💰 Trade ${trade.id}: profit = $${calculatedProfit.toFixed(2)}`);
+          
+          // Save the calculated profit to the trades table
+          const { error: updateError } = await supabase
+            .from('trades')
+            .update({ current_profit: calculatedProfit })
+            .eq('id', trade.id);
+            
+          if (updateError) {
+            console.error('❌ Error updating trade profit:', updateError);
+          }
+        }
+        
+        // Then sync to update interest_earned in profiles
         const { error: autoSyncError } = await supabase.rpc('sync_trading_profits');
         if (autoSyncError) {
           console.error('❌ Auto-sync error:', autoSyncError);
         } else {
-          console.log('✅ Auto-sync successful - profits updated');
+          console.log('✅ Profits synced to profile');
         }
-        console.log('📊 Fetching updated trade data...');
+        
+        // Refresh data
         await fetchData();
       } catch (error) {
         console.error('💥 Sync interval error:', error);
@@ -521,20 +555,9 @@ const TradingChart = () => {
     );
   }
 
-  // Calculate total profit based on trading engine
+  // Calculate profit for a trade based on trading engine (used for display and saving)
   const calculateProfit = (trade: ActiveTrade) => {
-    const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
-    const daysElapsed = hoursElapsed / 24;
-    
-    if (tradingEngine === 'rising') {
-      // Rising: Always positive growth
-      return trade.initial_amount * trade.profit_multiplier * daysElapsed;
-    } else {
-      // General: Fluctuating profits (can be negative)
-      const volatility = Math.sin(Date.now() / 10000 + trade.id.charCodeAt(0)) * 0.5;
-      const baseProfit = trade.initial_amount * trade.profit_multiplier * daysElapsed;
-      return baseProfit * (1 + volatility);
-    }
+    return calculateProfitForTrade(trade, tradingEngine);
   };
 
   const totalProfit = activeTrades.reduce((sum, trade) => sum + calculateProfit(trade), 0);
