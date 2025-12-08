@@ -349,8 +349,10 @@ const TradingChart = () => {
 
     fetchData();
     
-    // Update chart every 1 second and save profits directly to trades table
+    // Update chart every 1 second and save profits directly to trades table AND interest_earned
     const interval = setInterval(async () => {
+      if (activeTrades.length === 0) return;
+      
       console.log('🔄 Updating trade profits in database...');
       try {
         // Update each active trade's current_profit directly in the database
@@ -369,12 +371,12 @@ const TradingChart = () => {
           }
         }
         
-        // Then sync to update interest_earned in profiles
-        const { error: autoSyncError } = await supabase.rpc('sync_trading_profits');
-        if (autoSyncError) {
-          console.error('❌ Auto-sync error:', autoSyncError);
+        // DIRECTLY update interest_earned with current profits
+        const { error: liveUpdateError } = await supabase.rpc('update_live_interest_earned');
+        if (liveUpdateError) {
+          console.error('❌ Live interest update error:', liveUpdateError);
         } else {
-          console.log('✅ Profits synced to profile');
+          console.log('✅ Interest earned updated live');
         }
         
         // Refresh data

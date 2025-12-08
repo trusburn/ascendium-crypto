@@ -460,6 +460,7 @@ export type Database = {
       stop_all_user_trades: { Args: { p_user_id: string }; Returns: Json }
       sync_trading_profits: { Args: never; Returns: undefined }
       update_asset_based_profits: { Args: never; Returns: undefined }
+      update_live_interest_earned: { Args: never; Returns: undefined }
       update_trade_profits: { Args: never; Returns: undefined }
     }
     Enums: {
