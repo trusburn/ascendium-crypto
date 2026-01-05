@@ -74,6 +74,45 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_submissions: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          message: string
+          responded_at: string | null
+          responded_by: string | null
+          status: string
+          subject: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name: string
+          id?: string
+          last_name: string
+          message: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+          subject: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          message?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+          subject?: string
+        }
+        Relationships: []
+      }
       deposits: {
         Row: {
           amount: number

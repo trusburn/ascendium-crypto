@@ -139,6 +139,24 @@ export default function AdminWithdrawals() {
         description: `Withdrawal of $${withdrawal.amount} from ${getSourceLabel(source)} to ${withdrawal.crypto_type} wallet`
       });
 
+      // Send notification email
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase.functions.invoke('send-notification', {
+          body: {
+            type: 'withdrawal_approved',
+            userId: withdrawal.user_id,
+            data: {
+              amount: withdrawal.amount,
+              cryptoType: withdrawal.crypto_type
+            }
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
+      }
+
       toast({
         title: "Success",
         description: `Withdrawal of $${withdrawal.amount} approved and deducted from ${getSourceLabel(source)}`
@@ -156,6 +174,13 @@ export default function AdminWithdrawals() {
 
   const handleRejectWithdrawal = async (withdrawalId: string) => {
     try {
+      // Get withdrawal details first for notification
+      const { data: withdrawal } = await supabase
+        .from('withdrawals')
+        .select('*')
+        .eq('id', withdrawalId)
+        .single();
+
       const { error } = await supabase
         .from('withdrawals')
         .update({ 
@@ -166,6 +191,26 @@ export default function AdminWithdrawals() {
         .eq('id', withdrawalId);
 
       if (error) throw error;
+
+      // Send notification email
+      if (withdrawal) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.functions.invoke('send-notification', {
+            body: {
+              type: 'withdrawal_rejected',
+              userId: withdrawal.user_id,
+              data: {
+                amount: withdrawal.amount,
+                cryptoType: withdrawal.crypto_type
+              }
+            },
+            headers: {
+              Authorization: `Bearer ${session.access_token}`
+            }
+          });
+        }
+      }
 
       toast({
         title: "Success",

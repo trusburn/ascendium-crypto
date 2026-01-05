@@ -7,35 +7,83 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Mail, Send, Users, User, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mail, Send, Users, User, AlertCircle, CheckCircle, Settings, Loader2 } from 'lucide-react';
+
+interface UserOption {
+  id: string;
+  email: string;
+  username: string | null;
+}
 
 export default function AdminEmail() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [users, setUsers] = useState<UserOption[]>([]);
   
-  // Load email settings on mount
+  // Email settings
+  const [adminEmail, setAdminEmail] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [savingSettings, setSavingSettings] = useState(false);
+  
+  // Email composer
+  const [emailType, setEmailType] = useState<string>('custom');
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('');
+  
   useEffect(() => {
     loadEmailSettings();
+    loadUsers();
   }, []);
   
   const loadEmailSettings = async () => {
     try {
-      const { data: emailData } = await supabase
+      const { data, error } = await supabase
         .from('admin_settings')
-        .select('value')
-        .eq('key', 'email_from_address')
-        .single();
+        .select('key, value')
+        .in('key', ['email_from_address', 'email_logo_url', 'admin_contact_email']);
       
-      const { data: logoData } = await supabase
-        .from('admin_settings')
-        .select('value')
-        .eq('key', 'email_logo_url')
-        .single();
+      if (error) throw error;
       
-      if (emailData?.value) setAdminEmail(emailData.value as string);
-      if (logoData?.value) setLogoUrl(logoData.value as string);
+      if (data) {
+        data.forEach(item => {
+          const value = typeof item.value === 'string' ? item.value : String(item.value || '');
+          if (item.key === 'email_from_address') setAdminEmail(value);
+          if (item.key === 'email_logo_url') setLogoUrl(value);
+          if (item.key === 'admin_contact_email') setContactEmail(value);
+        });
+      }
     } catch (error) {
       console.error('Error loading email settings:', error);
+    } finally {
+      setLoadingSettings(false);
+    }
+  };
+  
+  const loadUsers = async () => {
+    try {
+      // Get profiles with user IDs
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .order('username');
+      
+      if (error) throw error;
+      
+      // We'll use the profile data - emails need to be fetched via admin API in edge function
+      setUsers((profiles || []).map(p => ({
+        id: p.id,
+        email: '', // Will be shown as "User: {username || id}"
+        username: p.username
+      })));
+    } catch (error) {
+      console.error('Error loading users:', error);
+    } finally {
+      setLoadingUsers(false);
     }
   };
   
@@ -43,7 +91,27 @@ export default function AdminEmail() {
     if (!adminEmail) {
       toast({
         title: "Missing Information",
-        description: "Please provide an admin email address",
+        description: "Please provide a sender email address",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(adminEmail)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid sender email address",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (contactEmail && !emailRegex.test(contactEmail)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid contact email address",
         variant: "destructive",
       });
       return;
@@ -51,15 +119,23 @@ export default function AdminEmail() {
     
     setSavingSettings(true);
     try {
-      // Save admin email
-      await supabase
-        .from('admin_settings')
-        .upsert({ key: 'email_from_address', value: adminEmail });
+      // Save all settings
+      const settings = [
+        { key: 'email_from_address', value: JSON.stringify(adminEmail) },
+        { key: 'email_logo_url', value: JSON.stringify(logoUrl) },
+        { key: 'admin_contact_email', value: JSON.stringify(contactEmail || adminEmail) }
+      ];
       
-      // Save logo URL
-      await supabase
-        .from('admin_settings')
-        .upsert({ key: 'email_logo_url', value: logoUrl });
+      for (const setting of settings) {
+        const { error } = await supabase
+          .from('admin_settings')
+          .upsert(
+            { key: setting.key, value: JSON.parse(setting.value), updated_at: new Date().toISOString() },
+            { onConflict: 'key' }
+          );
+        
+        if (error) throw error;
+      }
       
       toast({
         title: "Settings Saved",
@@ -75,16 +151,18 @@ export default function AdminEmail() {
       setSavingSettings(false);
     }
   };
-  const [emailType, setEmailType] = useState<'deposit' | 'withdrawal' | 'attention' | 'broadcast' | 'targeted' | 'verification' | 'custom'>('custom');
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
-  const [recipientEmail, setRecipientEmail] = useState('');
-  const [userId, setUserId] = useState('');
-  const [adminEmail, setAdminEmail] = useState('');
-  const [logoUrl, setLogoUrl] = useState('');
-  const [savingSettings, setSavingSettings] = useState(false);
 
   const handleSendEmail = async () => {
+    // Validate required fields
+    if (!emailType) {
+      toast({
+        title: "Missing Email Type",
+        description: "Please select an email type",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (!subject || !message) {
       toast({
         title: "Missing Information",
@@ -94,13 +172,16 @@ export default function AdminEmail() {
       return;
     }
 
-    if ((emailType === 'targeted' || emailType === 'custom') && !userId && !recipientEmail) {
-      toast({
-        title: "Missing Recipient",
-        description: "Please specify a recipient email or user ID",
-        variant: "destructive",
-      });
-      return;
+    // Validate recipient for non-broadcast emails
+    if (emailType !== 'broadcast') {
+      if (!selectedUserId && !recipientEmail) {
+        toast({
+          title: "Missing Recipient",
+          description: "Please select a user or enter a recipient email address",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setLoading(true);
@@ -116,7 +197,7 @@ export default function AdminEmail() {
         body: {
           type: emailType,
           to: recipientEmail || undefined,
-          userId: userId || undefined,
+          userId: selectedUserId || undefined,
           subject,
           message,
           data: {
@@ -143,7 +224,8 @@ export default function AdminEmail() {
       setSubject('');
       setMessage('');
       setRecipientEmail('');
-      setUserId('');
+      setSelectedUserId('');
+      setEmailType('custom');
       
     } catch (error: any) {
       console.error('Error sending email:', error);
@@ -194,36 +276,75 @@ export default function AdminEmail() {
     const preset = getPresetContent(type);
     setSubject(preset.subject);
     setMessage(preset.message);
+    
+    // Clear recipient fields when switching to broadcast
+    if (type === 'broadcast') {
+      setRecipientEmail('');
+      setSelectedUserId('');
+    }
   };
+
+  const handleUserSelect = (userId: string) => {
+    setSelectedUserId(userId);
+    setRecipientEmail(''); // Clear direct email when selecting user
+  };
+
+  if (loadingSettings) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Email Management</h1>
-        <p className="text-muted-foreground mt-2">Send emails to users for various activities</p>
+        <p className="text-muted-foreground mt-2">Configure email settings and send emails to users</p>
       </div>
 
-      <Card className="mb-6">
+      {/* Email Settings Card */}
+      <Card className="border-primary/20">
         <CardHeader>
-          <CardTitle>Email Settings</CardTitle>
-          <CardDescription>Configure sender information and branding</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Email Settings
+          </CardTitle>
+          <CardDescription>Configure sender information and branding for all outgoing emails</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="adminEmail">Admin Email Address (Send From)</Label>
-            <Input
-              id="adminEmail"
-              type="email"
-              placeholder="admin@yourplatform.com"
-              value={adminEmail}
-              onChange={(e) => setAdminEmail(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              This email will be used as the sender and will receive contact form submissions
-            </p>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="adminEmail">Sender Email Address *</Label>
+              <Input
+                id="adminEmail"
+                type="email"
+                placeholder="noreply@yourplatform.com"
+                value={adminEmail}
+                onChange={(e) => setAdminEmail(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                This email will appear as the "From" address on all outgoing emails
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="contactEmail">Contact Form Recipient Email</Label>
+              <Input
+                id="contactEmail"
+                type="email"
+                placeholder="support@yourplatform.com"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Contact form submissions will be sent to this email (defaults to sender email)
+              </p>
+            </div>
           </div>
           
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="logoUrl">Email Logo URL (Optional)</Label>
             <Input
               id="logoUrl"
@@ -232,22 +353,30 @@ export default function AdminEmail() {
               value={logoUrl}
               onChange={(e) => setLogoUrl(e.target.value)}
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Logo image to display in email header
+            <p className="text-xs text-muted-foreground">
+              Logo image to display in email headers
             </p>
           </div>
           
           <Button
             onClick={handleSaveSettings}
             disabled={savingSettings}
-            className="w-full"
+            className="w-full sm:w-auto"
           >
-            {savingSettings ? 'Saving...' : 'Save Email Settings'}
+            {savingSettings ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Email Settings'
+            )}
           </Button>
         </CardContent>
       </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
+        {/* Quick Actions */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -308,14 +437,15 @@ export default function AdminEmail() {
           </CardContent>
         </Card>
 
+        {/* Email Composer */}
         <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-accent/5">
           <CardHeader>
             <CardTitle className="text-primary">Email Composer</CardTitle>
             <CardDescription>Compose and send your email</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="emailType">Email Type</Label>
+            <div className="space-y-2">
+              <Label htmlFor="emailType">Email Type *</Label>
               <Select value={emailType} onValueChange={handleTypeChange}>
                 <SelectTrigger>
                   <SelectValue />
@@ -334,31 +464,66 @@ export default function AdminEmail() {
 
             {emailType !== 'broadcast' && (
               <>
-                <div>
-                  <Label htmlFor="recipientEmail">Recipient Email (Optional)</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="userSelect">
+                    Select User {emailType !== 'broadcast' && '*'}
+                  </Label>
+                  <Select value={selectedUserId} onValueChange={handleUserSelect}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={loadingUsers ? "Loading users..." : "Select a user"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          <div className="flex items-center gap-2">
+                            <User className="h-3 w-3" />
+                            <span>{user.username || user.id.substring(0, 8) + '...'}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">Or enter email directly</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="recipientEmail">Direct Email Address</Label>
                   <Input
                     id="recipientEmail"
                     type="email"
                     placeholder="user@example.com"
                     value={recipientEmail}
-                    onChange={(e) => setRecipientEmail(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="userId">Or User ID (Optional)</Label>
-                  <Input
-                    id="userId"
-                    placeholder="User UUID"
-                    value={userId}
-                    onChange={(e) => setUserId(e.target.value)}
+                    onChange={(e) => {
+                      setRecipientEmail(e.target.value);
+                      setSelectedUserId(''); // Clear user selection when typing email
+                    }}
                   />
                 </div>
               </>
             )}
 
-            <div>
-              <Label htmlFor="subject">Subject</Label>
+            {emailType === 'broadcast' && (
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-blue-500 font-medium">
+                  <Users className="h-4 w-4" />
+                  Broadcast Mode
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This email will be sent to all registered users.
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="subject">Subject *</Label>
               <Input
                 id="subject"
                 placeholder="Email subject"
@@ -367,8 +532,8 @@ export default function AdminEmail() {
               />
             </div>
 
-            <div>
-              <Label htmlFor="message">Message</Label>
+            <div className="space-y-2">
+              <Label htmlFor="message">Message *</Label>
               <Textarea
                 id="message"
                 placeholder="Email message content..."
@@ -383,23 +548,33 @@ export default function AdminEmail() {
               disabled={loading}
               className="w-full"
             >
-              <Send className="mr-2 h-4 w-4" />
-              {loading ? 'Sending...' : 'Send Email'}
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Send className="mr-2 h-4 w-4" />
+                  Send Email
+                </>
+              )}
             </Button>
           </CardContent>
         </Card>
       </div>
 
+      {/* Guidelines */}
       <Card>
         <CardHeader>
           <CardTitle>Email Guidelines</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>• <strong>Deposit/Withdrawal:</strong> Sent when financial transactions are approved</p>
+          <p>• <strong>Deposit/Withdrawal:</strong> Sent when financial transactions are approved or rejected</p>
           <p>• <strong>Attention Required:</strong> For urgent account matters or compliance issues</p>
           <p>• <strong>Verification:</strong> Confirms successful account verification</p>
           <p>• <strong>Broadcast:</strong> Sends to all registered users (use sparingly)</p>
-          <p>• <strong>Targeted:</strong> Send to specific user by email or ID</p>
+          <p>• <strong>Targeted:</strong> Send to specific user by selecting from dropdown or entering email</p>
           <p>• <strong>Custom:</strong> Create your own message for any purpose</p>
         </CardContent>
       </Card>

@@ -161,9 +161,9 @@ const Auth = () => {
 
     setIsLoading(true);
     try {
-      const redirectUrl = `${window.location.origin}/`;
+      const redirectUrl = `${window.location.origin}/auth`;
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -189,18 +189,42 @@ const Auth = () => {
           });
         }
       } else {
-        toast({
-          title: "Account Created!",
-          description: "Welcome to CryptoVault! Redirecting to your dashboard...",
-        });
-        // User will be redirected by the auth state change listener
-        // Clear form for good UX
-        setFormData({
-          email: '',
-          password: '',
-          username: '',
-          confirmPassword: ''
-        });
+        // Check if email confirmation is required
+        if (data?.user?.identities?.length === 0) {
+          // User already exists
+          toast({
+            title: "Account Exists",
+            description: "An account with this email already exists. Please sign in instead.",
+            variant: "destructive",
+          });
+        } else if (data?.user && !data?.session) {
+          // Email confirmation required
+          toast({
+            title: "Check Your Email",
+            description: "We've sent you a confirmation email. Please click the link to verify your account before signing in.",
+            duration: 10000,
+          });
+          // Clear form
+          setFormData({
+            email: '',
+            password: '',
+            username: '',
+            confirmPassword: ''
+          });
+        } else {
+          // Auto-confirmed (email confirmation disabled)
+          toast({
+            title: "Account Created!",
+            description: "Welcome to CryptoVault! Redirecting to your dashboard...",
+          });
+          // User will be redirected by the auth state change listener
+          setFormData({
+            email: '',
+            password: '',
+            username: '',
+            confirmPassword: ''
+          });
+        }
       }
     } catch (error) {
       toast({

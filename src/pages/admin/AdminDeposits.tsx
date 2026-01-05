@@ -106,6 +106,24 @@ export default function AdminDeposits() {
 
       if (profileUpdateError) throw profileUpdateError;
 
+      // Send notification email
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase.functions.invoke('send-notification', {
+          body: {
+            type: 'deposit_approved',
+            userId: deposit.user_id,
+            data: {
+              amount: deposit.amount,
+              cryptoType: deposit.crypto_type
+            }
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
+      }
+
       toast({
         title: "Success",
         description: `Deposit of $${deposit.amount} approved and credited to user balance`
@@ -123,6 +141,13 @@ export default function AdminDeposits() {
 
   const handleRejectDeposit = async (depositId: string) => {
     try {
+      // Get deposit details first for notification
+      const { data: deposit } = await supabase
+        .from('deposits')
+        .select('*')
+        .eq('id', depositId)
+        .single();
+
       const { error } = await supabase
         .from('deposits')
         .update({ 
@@ -133,6 +158,26 @@ export default function AdminDeposits() {
         .eq('id', depositId);
 
       if (error) throw error;
+
+      // Send notification email
+      if (deposit) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase.functions.invoke('send-notification', {
+            body: {
+              type: 'deposit_rejected',
+              userId: deposit.user_id,
+              data: {
+                amount: deposit.amount,
+                cryptoType: deposit.crypto_type
+              }
+            },
+            headers: {
+              Authorization: `Bearer ${session.access_token}`
+            }
+          });
+        }
+      }
 
       toast({
         title: "Success",
