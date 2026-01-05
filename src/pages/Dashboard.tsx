@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import CryptoTicker from "@/components/CryptoTicker";
 import TradingChart from "@/components/TradingChart";
+import { GlassmorphicCard, AnimatedCounter } from '@/components/animations';
 import {
   Wallet, 
   TrendingUp, 
@@ -14,7 +16,8 @@ import {
   ArrowUpRight, 
   Plus,
   Minus,
-  StopCircle
+  StopCircle,
+  Sparkles
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -38,19 +41,12 @@ const Dashboard = () => {
   const [activeTrades, setActiveTrades] = useState<ActiveTrade[]>([]);
   const [stoppingTrades, setStoppingTrades] = useState(false);
 
-  const portfolioData = [
-    { name: 'Bitcoin', value: 45, color: 'hsl(var(--crypto-gold))' },
-    { name: 'Ethereum', value: 30, color: 'hsl(var(--crypto-blue))' },
-    { name: 'Others', value: 25, color: 'hsl(var(--crypto-purple))' },
-  ];
-
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
 
       try {
         console.log('💰 Dashboard: Syncing trading profits...');
-        // First sync trading profits to ensure latest data
         const { error: syncError } = await supabase.rpc('sync_trading_profits');
         if (syncError) {
           console.error('❌ Dashboard sync error:', syncError);
@@ -58,7 +54,6 @@ const Dashboard = () => {
           console.log('✅ Dashboard sync successful');
         }
 
-        // Then fetch the updated profile data
         const { data, error } = await supabase
           .from('profiles')
           .select('net_balance, total_invested, interest_earned, commissions, base_balance')
@@ -78,7 +73,6 @@ const Dashboard = () => {
         console.log('💳 Dashboard profile data:', data);
         setProfile(data);
 
-        // Fetch active trades count
         const { data: tradesData } = await supabase
           .from('trades')
           .select('id, status')
@@ -94,8 +88,6 @@ const Dashboard = () => {
     };
 
     fetchProfile();
-    
-    // Refresh profile data every 30 seconds
     const interval = setInterval(fetchProfile, 30000);
     return () => clearInterval(interval);
   }, [user]);
@@ -111,8 +103,6 @@ const Dashboard = () => {
 
     setStoppingTrades(true);
     try {
-      // Call the DATABASE function to stop all trades and calculate profits
-      // ALL profit calculation happens in PostgreSQL - not frontend
       console.log('🛑 Stopping trades via database function...');
       const { data: result, error: rpcError } = await supabase.rpc('stop_all_user_trades', {
         p_user_id: user.id
@@ -149,7 +139,6 @@ const Dashboard = () => {
         return;
       }
 
-      // Create transaction records for stopped trades
       if (resultData.trade_details && resultData.trade_details.length > 0) {
         const transactionInserts = resultData.trade_details.map(trade => ({
           user_id: user.id,
@@ -161,7 +150,6 @@ const Dashboard = () => {
         await supabase.from('transactions').insert(transactionInserts);
       }
 
-      // Refresh profile data to show updated balances from database
       const { data: updatedProfile } = await supabase
         .from('profiles')
         .select('net_balance, total_invested, interest_earned, commissions')
@@ -194,7 +182,11 @@ const Dashboard = () => {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-crypto-blue"></div>
+          <motion.div
+            className="w-16 h-16 border-4 border-crypto-blue/30 border-t-crypto-blue rounded-full"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          />
         </div>
       </DashboardLayout>
     );
@@ -203,120 +195,177 @@ const Dashboard = () => {
   const stats = [
     {
       title: 'Net Balance',
-      value: `$${profile?.net_balance?.toLocaleString() || '0.00'}`,
+      value: profile?.net_balance || 0,
       icon: Wallet,
-      color: 'crypto-blue',
+      color: 'text-crypto-blue',
+      glow: 'blue' as const,
       change: '+12.5%'
     },
     {
       title: 'Total Invested',
-      value: `$${profile?.total_invested?.toLocaleString() || '0.00'}`,
+      value: profile?.total_invested || 0,
       icon: DollarSign,
-      color: 'crypto-green',
+      color: 'text-crypto-green',
+      glow: 'green' as const,
       change: '+8.2%'
     },
     {
       title: 'Interest Earned',
-      value: `$${profile?.interest_earned?.toLocaleString() || '0.00'}`,
+      value: profile?.interest_earned || 0,
       icon: TrendingUp,
-      color: 'crypto-purple',
+      color: 'text-crypto-purple',
+      glow: 'purple' as const,
       change: '+24.8%'
     },
     {
       title: 'Commissions',
-      value: `$${profile?.commissions?.toLocaleString() || '0.00'}`,
+      value: profile?.commissions || 0,
       icon: ArrowUpRight,
-      color: 'crypto-gold',
+      color: 'text-crypto-gold',
+      glow: 'gold' as const,
       change: '+15.3%'
     },
+  ];
+
+  const quickActions = [
+    { icon: Plus, label: 'Deposit', href: '/dashboard/deposit', variant: 'primary' },
+    { icon: Minus, label: 'Withdraw', href: '/dashboard/withdrawal', variant: 'purple' },
+    { icon: TrendingUp, label: 'Trade', href: '/dashboard/signals', variant: 'green' },
+    { icon: Wallet, label: 'Wallet', href: '/dashboard/wallet', variant: 'gold' },
   ];
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
         {/* Welcome Section */}
-        <div className="bg-crypto-gradient rounded-lg p-6 text-background">
-          <h1 className="text-3xl font-bold mb-2">Welcome back!</h1>
-          <p className="text-background/80">Track your crypto investments and grow your wealth</p>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <GlassmorphicCard glow="blue" className="overflow-hidden">
+            <div className="bg-crypto-gradient p-6 relative">
+              <motion.div
+                className="absolute inset-0 bg-white/5"
+                animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
+                transition={{ duration: 8, repeat: Infinity }}
+              />
+              <div className="relative z-10 flex items-center justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold text-background mb-2 flex items-center gap-2">
+                    <Sparkles className="h-6 w-6" />
+                    Welcome back!
+                  </h1>
+                  <p className="text-background/80">Track your crypto investments and grow your wealth</p>
+                </div>
+                <motion.div
+                  className="hidden md:block text-6xl"
+                  animate={{ rotate: [0, 10, 0, -10, 0] }}
+                  transition={{ duration: 5, repeat: Infinity }}
+                >
+                  ₿
+                </motion.div>
+              </div>
+            </div>
+          </GlassmorphicCard>
+        </motion.div>
 
         {/* Real-time Crypto Prices */}
-        <CryptoTicker />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <CryptoTicker />
+        </motion.div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat, index) => {
             const Icon = stat.icon;
             return (
-              <Card key={index} className="bg-muted/50 border-border hover:bg-muted/70 transition-colors">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-foreground">{stat.title}</CardTitle>
-                  <Icon className={`h-5 w-5 text-${stat.color}`} />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-                  <p className="text-xs text-crypto-green">
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + index * 0.05 }}
+              >
+                <GlassmorphicCard glow={stat.glow} className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-sm font-medium text-muted-foreground">{stat.title}</span>
+                    <motion.div
+                      className={`w-10 h-10 rounded-lg bg-current/10 flex items-center justify-center ${stat.color}`}
+                      whileHover={{ scale: 1.1, rotate: 360 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </motion.div>
+                  </div>
+                  <div className={`text-2xl font-bold ${stat.color}`}>
+                    $<AnimatedCounter value={stat.value} />
+                  </div>
+                  <p className="text-xs text-crypto-green mt-2 flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" />
                     {stat.change} from last month
                   </p>
-                </CardContent>
-              </Card>
+                </GlassmorphicCard>
+              </motion.div>
             );
           })}
         </div>
 
         {/* Live Trading Chart */}
-        <TradingChart />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <TradingChart />
+        </motion.div>
 
         {/* Quick Actions */}
-        <Card className="bg-muted/50 border-border">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <GlassmorphicCard glow="blue" className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <Button 
-                className="h-20 flex flex-col bg-crypto-blue hover:bg-crypto-blue/90"
-                onClick={() => navigate('/dashboard/deposit')}
-              >
-                <Plus className="h-6 w-6 mb-2" />
-                Deposit
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex flex-col border-crypto-purple text-crypto-purple hover:bg-crypto-purple hover:text-background"
-                onClick={() => navigate('/dashboard/withdrawal')}
-              >
-                <Minus className="h-6 w-6 mb-2" />
-                Withdraw
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex flex-col border-crypto-green text-crypto-green hover:bg-crypto-green hover:text-background"
-                onClick={() => navigate('/dashboard/signals')}
-              >
-                <TrendingUp className="h-6 w-6 mb-2" />
-                Trade
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex flex-col border-crypto-gold text-crypto-gold hover:bg-crypto-gold hover:text-background"
-                onClick={() => navigate('/dashboard/wallet')}
-              >
-                <Wallet className="h-6 w-6 mb-2" />
-                Wallet
-              </Button>
-              <Button 
-                variant="outline" 
-                className="h-20 flex flex-col border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                onClick={handleStopAllTrades}
-                disabled={stoppingTrades || activeTrades.length === 0}
-              >
-                <StopCircle className="h-6 w-6 mb-2" />
-                {stoppingTrades ? 'Stopping...' : `Stop Trading${activeTrades.length > 0 ? ` (${activeTrades.length})` : ''}`}
-              </Button>
+              {quickActions.map((action, index) => (
+                <motion.div
+                  key={index}
+                  whileHover={{ scale: 1.05, y: -5 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button 
+                    className={`h-20 w-full flex flex-col ${
+                      action.variant === 'primary' 
+                        ? 'bg-crypto-gradient hover:opacity-90' 
+                        : `border-crypto-${action.variant} text-crypto-${action.variant} hover:bg-crypto-${action.variant} hover:text-background`
+                    }`}
+                    variant={action.variant === 'primary' ? 'default' : 'outline'}
+                    onClick={() => navigate(action.href)}
+                  >
+                    <action.icon className="h-6 w-6 mb-2" />
+                    {action.label}
+                  </Button>
+                </motion.div>
+              ))}
+              <motion.div whileHover={{ scale: 1.05, y: -5 }} whileTap={{ scale: 0.95 }}>
+                <Button 
+                  variant="outline" 
+                  className="h-20 w-full flex flex-col border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-all"
+                  onClick={handleStopAllTrades}
+                  disabled={stoppingTrades || activeTrades.length === 0}
+                >
+                  <StopCircle className="h-6 w-6 mb-2" />
+                  {stoppingTrades ? 'Stopping...' : `Stop Trading${activeTrades.length > 0 ? ` (${activeTrades.length})` : ''}`}
+                </Button>
+              </motion.div>
             </div>
-          </CardContent>
-        </Card>
+          </GlassmorphicCard>
+        </motion.div>
       </div>
     </DashboardLayout>
   );
