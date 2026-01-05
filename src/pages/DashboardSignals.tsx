@@ -58,72 +58,37 @@ const DashboardSignals = () => {
     if (isFrozen) {
       toast({
         title: "Account Frozen",
-        description: "Your account is frozen. You cannot make trades.",
+        description: "Your account is frozen. You cannot make purchases.",
         variant: "destructive",
       });
       return;
     }
 
     try {
-      // Get signal details and user balance
-      const [signalResponse, profileResponse] = await Promise.all([
-        supabase.from('signals').select('price').eq('id', signalId).single(),
-        supabase.from('profiles').select('net_balance').eq('id', user.id).single()
-      ]);
+      // Call the secure RPC function to handle the purchase
+      const { data, error } = await supabase.rpc('purchase_signal', {
+        p_user_id: user.id,
+        p_signal_id: signalId
+      });
 
-      if (signalResponse.error) {
+      if (error) {
+        throw error;
+      }
+
+      const result = data as { success: boolean; error?: string; signal_name?: string; amount_paid?: number };
+
+      if (!result.success) {
         toast({
-          title: "Error",
-          description: "Failed to get signal details",
+          title: "Purchase Failed",
+          description: result.error || "Failed to purchase signal",
           variant: "destructive",
         });
         return;
-      }
-
-      if (profileResponse.error) {
-        toast({
-          title: "Error", 
-          description: "Failed to get profile data",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const signalPrice = signalResponse.data.price;
-      const userBalance = profileResponse.data.net_balance;
-
-      // Check if user has sufficient balance
-      if (userBalance < signalPrice) {
-        toast({
-          title: "Insufficient Balance",
-          description: `You need $${signalPrice} to purchase this signal. Current balance: $${userBalance}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Deduct from balance and create purchase record
-      const newBalance = userBalance - signalPrice;
-      
-      const [balanceUpdate, purchaseInsert] = await Promise.all([
-        supabase.from('profiles').update({ 
-          net_balance: newBalance,
-          base_balance: newBalance 
-        }).eq('id', user.id),
-        supabase.from('purchased_signals').insert({
-          user_id: user.id,
-          signal_id: signalId,
-          price_paid: signalPrice,
-        })
-      ]);
-
-      if (balanceUpdate.error || purchaseInsert.error) {
-        throw balanceUpdate.error || purchaseInsert.error;
       }
 
       toast({
         title: "Signal Purchased!",
-        description: `Successfully purchased ${signalName} signal. You can now use it for trading.`,
+        description: `Successfully purchased ${result.signal_name || signalName} signal for $${result.amount_paid}. You can now use it for trading.`,
       });
     } catch (error: any) {
       console.error('Error purchasing signal:', error);
