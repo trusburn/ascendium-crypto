@@ -1,13 +1,88 @@
+import { useState } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { MapPin, Phone, Mail, Clock, MessageCircle, Headphones, Loader2 } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, MessageCircle, Headphones, Loader2, Send, CheckCircle } from 'lucide-react';
 import { useContactContent } from '@/hooks/useContactContent';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 const Contact = () => {
   const { content, isLoading } = useContactContent();
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    subject: '',
+    message: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate all fields
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.subject || !formData.message) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all fields before submitting.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('contact-form', {
+        body: formData
+      });
+
+      if (error) throw error;
+
+      setIsSubmitted(true);
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        subject: '',
+        message: ''
+      });
+
+      toast({
+        title: "Message Sent!",
+        description: "Thank you for contacting us. We'll get back to you soon.",
+      });
+
+    } catch (error: any) {
+      console.error('Error submitting contact form:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send message. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -16,6 +91,7 @@ const Contact = () => {
       </div>
     );
   }
+
   const contactMethods = [
     {
       icon: Mail,
@@ -112,41 +188,102 @@ const Contact = () => {
                 <h2 className="text-3xl font-bold text-foreground mb-8">{content.form_title}</h2>
                 <Card className="bg-background/50 backdrop-blur-sm border border-border/50">
                   <CardContent className="p-8">
-                    <form className="space-y-6">
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-foreground">First Name</label>
-                          <Input placeholder="Enter your first name" className="border-border/50 focus:border-crypto-blue" />
+                    {isSubmitted ? (
+                      <div className="text-center py-8">
+                        <div className="mx-auto w-16 h-16 bg-crypto-green/20 rounded-full flex items-center justify-center mb-4">
+                          <CheckCircle className="h-8 w-8 text-crypto-green" />
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium text-foreground">Last Name</label>
-                          <Input placeholder="Enter your last name" className="border-border/50 focus:border-crypto-blue" />
+                        <h3 className="text-xl font-semibold text-foreground mb-2">Message Sent!</h3>
+                        <p className="text-muted-foreground mb-6">
+                          Thank you for reaching out. We'll get back to you within 24-48 hours.
+                        </p>
+                        <Button 
+                          onClick={() => setIsSubmitted(false)}
+                          variant="outline"
+                          className="border-crypto-blue text-crypto-blue hover:bg-crypto-blue hover:text-background"
+                        >
+                          Send Another Message
+                        </Button>
+                      </div>
+                    ) : (
+                      <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">First Name *</label>
+                            <Input 
+                              placeholder="Enter your first name" 
+                              className="border-border/50 focus:border-crypto-blue"
+                              value={formData.firstName}
+                              onChange={(e) => handleInputChange('firstName', e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">Last Name *</label>
+                            <Input 
+                              placeholder="Enter your last name" 
+                              className="border-border/50 focus:border-crypto-blue"
+                              value={formData.lastName}
+                              onChange={(e) => handleInputChange('lastName', e.target.value)}
+                              required
+                            />
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Email</label>
-                        <Input type="email" placeholder="Enter your email" className="border-border/50 focus:border-crypto-blue" />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Subject</label>
-                        <Input placeholder="How can we help you?" className="border-border/50 focus:border-crypto-blue" />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-foreground">Message</label>
-                        <Textarea 
-                          placeholder="Tell us more about your inquiry..." 
-                          rows={6}
-                          className="border-border/50 focus:border-crypto-blue resize-none"
-                        />
-                      </div>
-                      
-                      <Button className="w-full bg-crypto-gradient hover:opacity-90 text-background">
-                        {content.form_button_text}
-                      </Button>
-                    </form>
+                        
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">Email *</label>
+                          <Input 
+                            type="email" 
+                            placeholder="Enter your email" 
+                            className="border-border/50 focus:border-crypto-blue"
+                            value={formData.email}
+                            onChange={(e) => handleInputChange('email', e.target.value)}
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">Subject *</label>
+                          <Input 
+                            placeholder="How can we help you?" 
+                            className="border-border/50 focus:border-crypto-blue"
+                            value={formData.subject}
+                            onChange={(e) => handleInputChange('subject', e.target.value)}
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">Message *</label>
+                          <Textarea 
+                            placeholder="Tell us more about your inquiry..." 
+                            rows={6}
+                            className="border-border/50 focus:border-crypto-blue resize-none"
+                            value={formData.message}
+                            onChange={(e) => handleInputChange('message', e.target.value)}
+                            required
+                          />
+                        </div>
+                        
+                        <Button 
+                          type="submit"
+                          className="w-full bg-crypto-gradient hover:opacity-90 text-background"
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Sending...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="mr-2 h-4 w-4" />
+                              {content.form_button_text}
+                            </>
+                          )}
+                        </Button>
+                      </form>
+                    )}
                   </CardContent>
                 </Card>
               </div>

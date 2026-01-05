@@ -1,4 +1,10 @@
 project_id = "tobkmqcbbxulvezhdzzo"
 
 [functions.send-email]
-verify_jwt = true
+verify_jwt = false
+
+[functions.contact-form]
+verify_jwt = false
+
+[functions.send-notification]
+verify_jwt = false
