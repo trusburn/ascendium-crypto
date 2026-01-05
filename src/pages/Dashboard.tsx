@@ -111,16 +111,9 @@ const Dashboard = () => {
 
     setStoppingTrades(true);
     try {
-      // IMPORTANT: Sync trading profits FIRST to ensure database has the latest profit values
-      console.log('🔄 Syncing profits before stopping trades...');
-      const { error: syncError } = await supabase.rpc('sync_trading_profits');
-      if (syncError) {
-        console.error('❌ Sync error before stop:', syncError);
-      } else {
-        console.log('✅ Profits synced successfully');
-      }
-
-      // Call the database function to stop all trades and update balances
+      // Call the DATABASE function to stop all trades and calculate profits
+      // ALL profit calculation happens in PostgreSQL - not frontend
+      console.log('🛑 Stopping trades via database function...');
       const { data: result, error: rpcError } = await supabase.rpc('stop_all_user_trades', {
         p_user_id: user.id
       });
@@ -146,6 +139,8 @@ const Dashboard = () => {
         }>;
       };
 
+      console.log('📊 Stop result:', resultData);
+
       if (!resultData.success) {
         toast({
           title: "No Active Trades",
@@ -154,25 +149,19 @@ const Dashboard = () => {
         return;
       }
 
-      // Create detailed transaction records for each stopped trade
+      // Create transaction records for stopped trades
       if (resultData.trade_details && resultData.trade_details.length > 0) {
         const transactionInserts = resultData.trade_details.map(trade => ({
           user_id: user.id,
           type: trade.profit >= 0 ? 'trade_profit' : 'trade_loss',
           amount: trade.profit,
-          description: `${trade.trade_type.toUpperCase()} ${trade.asset_symbol} | Entry: $${trade.entry_price?.toFixed(2) || '0.00'} → Exit: $${trade.exit_price?.toFixed(2) || '0.00'} | Invested: $${trade.initial_amount.toFixed(2)} | ${trade.profit >= 0 ? 'Profit' : 'Loss'}: $${Math.abs(trade.profit).toFixed(2)}`,
+          description: `${trade.trade_type.toUpperCase()} ${trade.asset_symbol} | Invested: $${trade.initial_amount.toFixed(2)} | ${trade.profit >= 0 ? 'Profit' : 'Loss'}: $${Math.abs(trade.profit).toFixed(2)}`,
         }));
 
-        const { error: txError } = await supabase
-          .from('transactions')
-          .insert(transactionInserts);
-
-        if (txError) {
-          console.error('Error creating transactions:', txError);
-        }
+        await supabase.from('transactions').insert(transactionInserts);
       }
 
-      // Refresh profile data to show updated balances
+      // Refresh profile data to show updated balances from database
       const { data: updatedProfile } = await supabase
         .from('profiles')
         .select('net_balance, total_invested, interest_earned, commissions')
