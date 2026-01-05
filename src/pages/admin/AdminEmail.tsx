@@ -163,10 +163,19 @@ export default function AdminEmail() {
       return;
     }
     
-    if (!subject || !message) {
+    if (!subject?.trim()) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in subject and message",
+        title: "Missing Subject",
+        description: "Please enter an email subject",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!message?.trim()) {
+      toast({
+        title: "Missing Message",
+        description: "Please enter an email message",
         variant: "destructive",
       });
       return;
@@ -174,10 +183,20 @@ export default function AdminEmail() {
 
     // Validate recipient for non-broadcast emails
     if (emailType !== 'broadcast') {
-      if (!selectedUserId && !recipientEmail) {
+      if (!selectedUserId && !recipientEmail?.trim()) {
         toast({
           title: "Missing Recipient",
           description: "Please select a user or enter a recipient email address",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Validate email format if direct email provided
+      if (recipientEmail?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail.trim())) {
+        toast({
+          title: "Invalid Email",
+          description: "Please enter a valid email address",
           variant: "destructive",
         });
         return;
@@ -190,34 +209,49 @@ export default function AdminEmail() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        throw new Error('Not authenticated');
+        throw new Error('Not authenticated. Please log in again.');
       }
 
+      const payload = {
+        type: emailType,
+        to: recipientEmail?.trim() || undefined,
+        userId: selectedUserId || undefined,
+        subject: subject.trim(),
+        message: message.trim(),
+        data: {
+          additionalInfo: emailType === 'broadcast' ? 'This message was sent to all users.' : undefined
+        }
+      };
+
+      console.log('Sending email with payload:', payload);
+
       const response = await supabase.functions.invoke('send-email', {
-        body: {
-          type: emailType,
-          to: recipientEmail || undefined,
-          userId: selectedUserId || undefined,
-          subject,
-          message,
-          data: {
-            additionalInfo: emailType === 'broadcast' ? 'This message was sent to all users.' : undefined
-          }
-        },
+        body: payload,
         headers: {
           Authorization: `Bearer ${session.access_token}`
         }
       });
 
+      console.log('Email response:', response);
+
       if (response.error) {
-        throw response.error;
+        // Extract error message from response
+        let errorMessage = 'Failed to send email';
+        if (response.error.message) {
+          errorMessage = response.error.message;
+        }
+        throw new Error(errorMessage);
       }
 
       const result = response.data;
 
+      if (!result?.success) {
+        throw new Error(result?.error || 'Failed to send email');
+      }
+
       toast({
         title: "Email Sent Successfully",
-        description: `Sent to ${result.sent} recipient(s). ${result.failed > 0 ? `${result.failed} failed.` : ''}`,
+        description: `Sent to ${result.sent} recipient(s)${result.failed > 0 ? `. ${result.failed} failed.` : ''}`,
       });
 
       // Reset form
@@ -231,7 +265,7 @@ export default function AdminEmail() {
       console.error('Error sending email:', error);
       toast({
         title: "Error Sending Email",
-        description: error.message || "Failed to send email",
+        description: error.message || "Failed to send email. Please check the logs.",
         variant: "destructive",
       });
     } finally {
