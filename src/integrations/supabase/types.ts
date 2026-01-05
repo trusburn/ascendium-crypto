@@ -461,6 +461,10 @@ export type Database = {
         Returns: Database["public"]["Enums"]["user_role"]
       }
       is_admin: { Args: { check_user_id?: string }; Returns: boolean }
+      purchase_signal: {
+        Args: { p_signal_id: string; p_user_id: string }
+        Returns: Json
+      }
       stop_all_user_trades: { Args: { p_user_id: string }; Returns: Json }
       sync_trading_profits: { Args: never; Returns: undefined }
       update_asset_based_profits: { Args: never; Returns: undefined }
