@@ -16,6 +16,7 @@ import {
   Settings, 
   LogOut,
   Menu,
+  History,
   X
 } from 'lucide-react';
 
@@ -42,6 +43,7 @@ export const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     { name: 'Withdrawal', href: '/dashboard/withdrawal', icon: ArrowDownLeft },
     { name: 'Wallet', href: '/dashboard/wallet', icon: Wallet },
     { name: 'Signals', href: '/dashboard/signals', icon: Signal },
+    { name: 'Trade History', href: '/dashboard/trade-history', icon: History },
     { name: 'Tutorial', href: '/dashboard/tutorial', icon: BookOpen },
     { name: 'Profile', href: '/dashboard/profile', icon: User },
     { name: 'Settings', href: '/dashboard/settings', icon: Settings },
