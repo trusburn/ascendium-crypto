@@ -448,6 +448,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_trade_profit: {
+        Args: { p_engine_type?: string; p_trade_id: string }
+        Returns: number
+      }
       deduct_trade_balance: {
         Args: { p_amount: number; p_user_id: string }
         Returns: boolean
@@ -461,7 +465,6 @@ export type Database = {
       sync_trading_profits: { Args: never; Returns: undefined }
       update_asset_based_profits: { Args: never; Returns: undefined }
       update_live_interest_earned: { Args: never; Returns: undefined }
-      update_trade_profits: { Args: never; Returns: undefined }
     }
     Enums: {
       trading_engine_type: "default" | "rising" | "general"

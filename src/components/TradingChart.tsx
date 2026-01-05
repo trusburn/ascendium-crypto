@@ -45,21 +45,8 @@ interface TradeableAsset {
 
 type TradingEngineType = 'rising' | 'general';
 
-// Helper function to calculate profit (used in multiple places)
-const calculateProfitForTrade = (trade: { started_at: string; initial_amount: number; profit_multiplier: number; id: string }, tradingEngine: TradingEngineType) => {
-  const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
-  const daysElapsed = hoursElapsed / 24;
-  
-  if (tradingEngine === 'rising') {
-    // Rising: Always positive growth
-    return trade.initial_amount * trade.profit_multiplier * daysElapsed;
-  } else {
-    // General: Fluctuating profits (can be negative)
-    const volatility = Math.sin(Date.now() / 10000 + trade.id.charCodeAt(0)) * 0.5;
-    const baseProfit = trade.initial_amount * trade.profit_multiplier * daysElapsed;
-    return baseProfit * (1 + volatility);
-  }
-};
+// NOTE: Profit calculation is now done entirely in the DATABASE via PostgreSQL functions
+// Frontend only reads current_profit from the trades table - NO client-side calculations
 
 const TradingChart = () => {
   const { user } = useAuth();
@@ -349,44 +336,47 @@ const TradingChart = () => {
 
     fetchData();
     
-    // Update chart every 1 second and save profits directly to trades table AND interest_earned
+    // Update profits via DATABASE function every 2 seconds (no frontend calculations)
     const interval = setInterval(async () => {
       if (activeTrades.length === 0) return;
       
-      console.log('🔄 Updating trade profits in database...');
+      console.log('🔄 Syncing profits from database...');
       try {
-        // Update each active trade's current_profit directly in the database
-        for (const trade of activeTrades) {
-          const calculatedProfit = calculateProfitForTrade(trade, tradingEngine);
-          console.log(`💰 Trade ${trade.id}: profit = $${calculatedProfit.toFixed(2)}`);
-          
-          // Save the calculated profit to the trades table
-          const { error: updateError } = await supabase
-            .from('trades')
-            .update({ current_profit: calculatedProfit })
-            .eq('id', trade.id);
-            
-          if (updateError) {
-            console.error('❌ Error updating trade profit:', updateError);
-          }
-        }
-        
-        // DIRECTLY update interest_earned with current profits
-        const { error: liveUpdateError } = await supabase.rpc('update_live_interest_earned');
-        if (liveUpdateError) {
-          console.error('❌ Live interest update error:', liveUpdateError);
+        // Call database function to calculate and sync all profits
+        const { error: syncError } = await supabase.rpc('update_live_interest_earned');
+        if (syncError) {
+          console.error('❌ Sync error:', syncError);
         } else {
-          console.log('✅ Interest earned updated live');
+          console.log('✅ Database profits synced');
         }
         
-        // Refresh data
-        await fetchData();
+        // Refresh trades data to get updated current_profit values from DB
+        const { data: tradesData } = await supabase
+          .from('trades')
+          .select('id, trade_type, initial_amount, current_profit, profit_multiplier, started_at, signal_id')
+          .eq('user_id', user?.id)
+          .eq('status', 'active');
+        
+        if (tradesData) {
+          const signalIds = tradesData.map(t => t.signal_id);
+          const { data: signalsData } = await supabase
+            .from('signals')
+            .select('id, name')
+            .in('id', signalIds.length > 0 ? signalIds : ['']);
+          
+          const mergedTrades = tradesData.map(trade => ({
+            ...trade,
+            signal_name: signalsData?.find(s => s.id === trade.signal_id)?.name || 'Unknown Signal',
+          }));
+          
+          setActiveTrades(mergedTrades);
+        }
       } catch (error) {
         console.error('💥 Sync interval error:', error);
       }
-    }, 1000);
+    }, 2000);
     return () => clearInterval(interval);
-  }, [user, tradingEngine]);
+  }, [user, tradingEngine, activeTrades.length]);
 
   const handleTrade = async (type: 'buy' | 'sell') => {
     if (!selectedSignal || !user) {
@@ -557,12 +547,12 @@ const TradingChart = () => {
     );
   }
 
-  // Calculate profit for a trade based on trading engine (used for display and saving)
-  const calculateProfit = (trade: ActiveTrade) => {
-    return calculateProfitForTrade(trade, tradingEngine);
+  // Get profit directly from database - NO frontend calculation
+  const getProfit = (trade: ActiveTrade) => {
+    return trade.current_profit || 0;
   };
 
-  const totalProfit = activeTrades.reduce((sum, trade) => sum + calculateProfit(trade), 0);
+  const totalProfit = activeTrades.reduce((sum, trade) => sum + getProfit(trade), 0);
 
   return (
     <div className="space-y-6">
@@ -815,7 +805,7 @@ const TradingChart = () => {
             <div className="space-y-3">
               {activeTrades.map((trade) => {
                 const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
-                const currentProfit = calculateProfit(trade);
+                const currentProfit = getProfit(trade);
                 
                 return (
                   <div key={trade.id} className="flex items-center justify-between p-3 bg-background rounded-lg border">
