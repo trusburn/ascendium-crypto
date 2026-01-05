@@ -1,96 +1,173 @@
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Bitcoin3D } from './Bitcoin3D';
-import { ArrowRight, TrendingUp, Shield, Zap } from 'lucide-react';
+import { FluidBackground, ScrollReveal } from './animations';
+import { ArrowRight, TrendingUp, Shield, Zap, Play } from 'lucide-react';
 import { useAdminContent } from '@/hooks/useAdminContent';
 
 export const Hero = () => {
   const { content } = useAdminContent();
   
   return (
-    <section id="home" className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0 bg-hero-gradient"></div>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_50%,hsl(var(--crypto-blue)/0.1)_0%,transparent_50%)]"></div>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,hsl(var(--crypto-purple)/0.1)_0%,transparent_50%)]"></div>
+    <section id="home" className="min-h-screen flex items-center justify-center relative overflow-hidden pt-16">
+      {/* Fluid Background */}
+      <FluidBackground variant="hero" />
+      
+      {/* Grid Pattern Overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:100px_100px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_50%,black,transparent)]" />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left Content */}
           <div className="text-center lg:text-left space-y-8">
-            <div className="space-y-4">
-              <h1 className="text-5xl lg:text-7xl font-bold">
+            <ScrollReveal>
+              <motion.div 
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-crypto-blue/10 border border-crypto-blue/30 text-crypto-blue"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <div className="w-2 h-2 rounded-full bg-crypto-green animate-pulse" />
+                <span className="text-sm font-medium">Live Trading Active</span>
+              </motion.div>
+            </ScrollReveal>
+
+            <ScrollReveal delay={0.1}>
+              <h1 className="text-5xl lg:text-7xl font-bold leading-tight">
                 <span className="bg-crypto-gradient bg-clip-text text-transparent">
                   {content.heroTitle}
                 </span>
               </h1>
+            </ScrollReveal>
+
+            <ScrollReveal delay={0.2}>
               <p className="text-xl text-muted-foreground max-w-2xl">
                 {content.heroSubtitle}
               </p>
-            </div>
+            </ScrollReveal>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-6 py-8">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-crypto-gold">$2.5B+</div>
-                <div className="text-sm text-muted-foreground">{content.tradingVolumeLabel}</div>
+            <ScrollReveal delay={0.3}>
+              <div className="grid grid-cols-3 gap-6 py-8">
+                <motion.div 
+                  className="text-center p-4 rounded-xl bg-background/30 backdrop-blur-sm border border-border/30"
+                  whileHover={{ scale: 1.05, borderColor: 'hsl(var(--crypto-gold) / 0.5)' }}
+                >
+                  <div className="text-3xl font-bold text-crypto-gold">{content.statsTradingVolume || '$2.5B+'}</div>
+                  <div className="text-sm text-muted-foreground">{content.tradingVolumeLabel}</div>
+                </motion.div>
+                <motion.div 
+                  className="text-center p-4 rounded-xl bg-background/30 backdrop-blur-sm border border-border/30"
+                  whileHover={{ scale: 1.05, borderColor: 'hsl(var(--crypto-blue) / 0.5)' }}
+                >
+                  <div className="text-3xl font-bold text-crypto-blue">{content.statsActiveTraders || '150K+'}</div>
+                  <div className="text-sm text-muted-foreground">{content.activeUsersLabel}</div>
+                </motion.div>
+                <motion.div 
+                  className="text-center p-4 rounded-xl bg-background/30 backdrop-blur-sm border border-border/30"
+                  whileHover={{ scale: 1.05, borderColor: 'hsl(var(--crypto-green) / 0.5)' }}
+                >
+                  <div className="text-3xl font-bold text-crypto-green">{content.statsUptime || '99.9%'}</div>
+                  <div className="text-sm text-muted-foreground">{content.uptimeLabel}</div>
+                </motion.div>
               </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-crypto-blue">150K+</div>
-                <div className="text-sm text-muted-foreground">{content.activeUsersLabel}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-crypto-green">99.9%</div>
-                <div className="text-sm text-muted-foreground">{content.uptimeLabel}</div>
-              </div>
-            </div>
+            </ScrollReveal>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Button size="lg" className="bg-crypto-gradient hover:opacity-90 text-background group">
-                Start Investing
-                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
-              <Button size="lg" variant="outline" className="border-crypto-blue text-crypto-blue hover:bg-crypto-blue hover:text-background">
-                View Dashboard
-              </Button>
-            </div>
+            <ScrollReveal delay={0.4}>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <a href="/auth">
+                    <Button size="lg" className="bg-crypto-gradient hover:opacity-90 text-background group px-8">
+                      Start Investing
+                      <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                    </Button>
+                  </a>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <a href="/dashboard">
+                    <Button size="lg" variant="outline" className="border-crypto-blue text-crypto-blue hover:bg-crypto-blue hover:text-background group px-8">
+                      <Play className="mr-2 h-4 w-4" />
+                      View Dashboard
+                    </Button>
+                  </a>
+                </motion.div>
+              </div>
+            </ScrollReveal>
 
             {/* Features */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-8">
-              <div className="flex items-center space-x-3 justify-center lg:justify-start">
-                <TrendingUp className="h-6 w-6 text-crypto-green" />
-                <span className="text-sm">High Returns</span>
+            <ScrollReveal delay={0.5}>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-8">
+                {[
+                  { icon: TrendingUp, text: 'High Returns', color: 'text-crypto-green' },
+                  { icon: Shield, text: 'Secure Platform', color: 'text-crypto-blue' },
+                  { icon: Zap, text: 'Instant Trading', color: 'text-crypto-gold' },
+                ].map((feature, index) => (
+                  <motion.div
+                    key={index}
+                    className="flex items-center space-x-3 justify-center lg:justify-start"
+                    whileHover={{ x: 5 }}
+                  >
+                    <feature.icon className={`h-6 w-6 ${feature.color}`} />
+                    <span className="text-sm text-foreground">{feature.text}</span>
+                  </motion.div>
+                ))}
               </div>
-              <div className="flex items-center space-x-3 justify-center lg:justify-start">
-                <Shield className="h-6 w-6 text-crypto-blue" />
-                <span className="text-sm">Secure Platform</span>
-              </div>
-              <div className="flex items-center space-x-3 justify-center lg:justify-start">
-                <Zap className="h-6 w-6 text-crypto-gold" />
-                <span className="text-sm">Instant Trading</span>
-              </div>
-            </div>
+            </ScrollReveal>
           </div>
 
           {/* Right Content - 3D Bitcoin */}
-          <div className="flex justify-center lg:justify-end">
+          <ScrollReveal direction="right" className="flex justify-center lg:justify-end">
             <div className="relative">
               <Bitcoin3D />
               {/* Floating elements */}
-              <div className="absolute -top-4 -right-4 animate-crypto-float">
-                <div className="bg-crypto-green/20 backdrop-blur-sm rounded-full px-3 py-1 text-sm text-crypto-green border border-crypto-green/30">
+              <motion.div 
+                className="absolute -top-4 -right-4"
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 3, repeat: Infinity }}
+              >
+                <div className="bg-crypto-green/20 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-crypto-green border border-crypto-green/30 flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
                   +24.5%
                 </div>
-              </div>
-              <div className="absolute -bottom-4 -left-4 animate-crypto-float" style={{animationDelay: '2s'}}>
-                <div className="bg-crypto-blue/20 backdrop-blur-sm rounded-full px-3 py-1 text-sm text-crypto-blue border border-crypto-blue/30">
-                  BTC
+              </motion.div>
+              <motion.div 
+                className="absolute -bottom-4 -left-4"
+                animate={{ y: [0, 10, 0] }}
+                transition={{ duration: 4, repeat: Infinity, delay: 1 }}
+              >
+                <div className="bg-crypto-blue/20 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-crypto-blue border border-crypto-blue/30">
+                  ₿ BTC
                 </div>
-              </div>
+              </motion.div>
+              <motion.div 
+                className="absolute top-1/2 -right-8"
+                animate={{ y: [0, -15, 0] }}
+                transition={{ duration: 5, repeat: Infinity, delay: 2 }}
+              >
+                <div className="bg-crypto-purple/20 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-crypto-purple border border-crypto-purple/30">
+                  Ξ ETH
+                </div>
+              </motion.div>
             </div>
-          </div>
+          </ScrollReveal>
         </div>
       </div>
+
+      {/* Scroll indicator */}
+      <motion.div
+        className="absolute bottom-8 left-1/2 -translate-x-1/2"
+        animate={{ y: [0, 10, 0] }}
+        transition={{ duration: 2, repeat: Infinity }}
+      >
+        <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex justify-center pt-2">
+          <motion.div
+            className="w-1.5 h-1.5 rounded-full bg-crypto-blue"
+            animate={{ y: [0, 12, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          />
+        </div>
+      </motion.div>
     </section>
   );
 };
