@@ -18,6 +18,7 @@ import DashboardWallet from "./pages/DashboardWallet";
 import DashboardTutorial from "./pages/DashboardTutorial";
 import DashboardProfile from "./pages/DashboardProfile";
 import DashboardSettings from "./pages/DashboardSettings";
+import DashboardTradeHistory from "./pages/DashboardTradeHistory";
 import AdminPanel from "./pages/AdminPanel";
 import AdminOverview from "./pages/admin/AdminOverview";
 import AdminUsers from './pages/admin/AdminUsers';
@@ -59,6 +60,7 @@ const App = () => (
           <Route path="/dashboard/tutorial" element={<ProtectedRoute><DashboardTutorial /></ProtectedRoute>} />
           <Route path="/dashboard/profile" element={<ProtectedRoute><DashboardProfile /></ProtectedRoute>} />
           <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
+          <Route path="/dashboard/trade-history" element={<ProtectedRoute><DashboardTradeHistory /></ProtectedRoute>} />
           
           {/* Legacy admin panel */}
           <Route path="/admin-panel" element={<ProtectedRoute adminOnly><AdminPanel /></ProtectedRoute>} />
