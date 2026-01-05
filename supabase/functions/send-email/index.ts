@@ -18,6 +18,11 @@ interface EmailRequest {
   data?: Record<string, any>;
 }
 
+// Helper to validate email format
+const isValidEmail = (email: string): boolean => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -59,6 +64,23 @@ const handler = async (req: Request): Promise<Response> => {
     const emailRequest: EmailRequest = await req.json();
     const { type, to, userId, subject, message, data } = emailRequest;
 
+    console.log('Received email request:', { type, to, userId, subject: subject?.substring(0, 50), hasMessage: !!message });
+
+    // Validate required fields
+    if (!type) {
+      return new Response(JSON.stringify({ error: 'Email type is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!subject || !message) {
+      return new Response(JSON.stringify({ error: 'Subject and message are required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     let recipients: string[] = [];
 
     // Get admin email settings
@@ -75,31 +97,47 @@ const handler = async (req: Request): Promise<Response> => {
       const logoSetting = emailSettings.find(s => s.key === 'email_logo_url');
       
       if (emailSetting?.value) {
-        fromEmail = `Trading Platform <${emailSetting.value}>`;
+        const emailValue = typeof emailSetting.value === 'string' ? emailSetting.value : String(emailSetting.value);
+        fromEmail = `Trading Platform <${emailValue}>`;
       }
       if (logoSetting?.value) {
-        logoUrl = logoSetting.value as string;
+        logoUrl = typeof logoSetting.value === 'string' ? logoSetting.value : String(logoSetting.value);
       }
     }
 
     // Determine recipients based on email type
     if (type === 'broadcast') {
       // Send to all users
+      console.log('Fetching all users for broadcast...');
       const { data: users, error: usersError } = await supabase.auth.admin.listUsers();
-      if (usersError) throw usersError;
+      if (usersError) {
+        console.error('Error fetching users for broadcast:', usersError);
+        throw usersError;
+      }
       recipients = users.users.map(u => u.email!).filter(Boolean);
-    } else if (type === 'targeted' && userId) {
-      // Send to specific user
+      console.log(`Found ${recipients.length} users for broadcast`);
+    } else if ((type === 'targeted' || type === 'custom' || type === 'deposit' || type === 'withdrawal' || type === 'attention' || type === 'verification') && userId) {
+      // Send to specific user by userId
+      console.log('Fetching user by ID:', userId);
       const { data: targetUser, error: userError } = await supabase.auth.admin.getUserById(userId);
-      if (userError) throw userError;
-      if (targetUser.user.email) recipients = [targetUser.user.email];
+      if (userError) {
+        console.error('Error fetching user by ID:', userError);
+        throw userError;
+      }
+      if (targetUser.user.email) {
+        recipients = [targetUser.user.email];
+        console.log('Found user email:', targetUser.user.email);
+      }
     } else if (to) {
       // Direct email addresses provided
-      recipients = Array.isArray(to) ? to : [to];
+      const emailList = Array.isArray(to) ? to : [to];
+      recipients = emailList.filter(email => isValidEmail(email));
+      console.log('Using provided email addresses:', recipients);
     }
 
     if (recipients.length === 0) {
-      return new Response(JSON.stringify({ error: 'No recipients found' }), {
+      console.error('No valid recipients found', { type, to, userId });
+      return new Response(JSON.stringify({ error: 'No valid recipients found. Please provide a valid email address or select a user.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
