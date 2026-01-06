@@ -58,7 +58,7 @@ export const MarketChartsSection = () => {
                 transition={{ duration: 0.3 }}
               >
                 <GlassmorphicCard glow="green" className="p-0 overflow-hidden">
-                  <TradingViewChart />
+                  {activeTab === 'crypto' && <TradingViewChart />}
                 </GlassmorphicCard>
               </motion.div>
             </TabsContent>
@@ -70,7 +70,7 @@ export const MarketChartsSection = () => {
                 transition={{ duration: 0.3 }}
               >
                 <GlassmorphicCard glow="gold" className="p-0 overflow-hidden">
-                  <ForexChart />
+                  {activeTab === 'forex' && <ForexChart />}
                 </GlassmorphicCard>
               </motion.div>
             </TabsContent>
