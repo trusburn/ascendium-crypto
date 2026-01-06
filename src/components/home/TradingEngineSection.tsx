@@ -9,18 +9,18 @@ export const TradingEngineSection = () => {
   const features = [
     {
       icon: Brain,
-      title: content.tradingEngineFeature1,
-      description: 'Neural networks analyze market patterns in real-time',
+      title: content.tradingEngineFeature1 || 'Neural Network Analysis',
+      description: 'AI analyzes crypto and forex market patterns in real-time',
     },
     {
       icon: BarChart3,
-      title: content.tradingEngineFeature2,
-      description: 'Process millions of data points per second',
+      title: content.tradingEngineFeature2 || 'Multi-Market Processing',
+      description: 'Process millions of data points across crypto and forex markets',
     },
     {
       icon: Zap,
-      title: content.tradingEngineFeature3,
-      description: 'Smart algorithms lock in gains automatically',
+      title: content.tradingEngineFeature3 || 'Auto Profit-Taking',
+      description: 'Smart algorithms lock in gains automatically across all markets',
     },
   ];
 

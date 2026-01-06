@@ -10,13 +10,13 @@ export const About = () => {
     {
       icon: Coins,
       title: "Multi-Asset Trading",
-      description: "Trade Bitcoin, Ethereum, and 100+ cryptocurrencies with our advanced platform.",
+      description: "Trade Bitcoin, Ethereum, 100+ cryptocurrencies, and major forex pairs on one platform.",
       color: 'gold',
     },
     {
       icon: TrendingUp,
       title: "AI-Powered Signals",
-      description: "Get expert trading signals powered by machine learning and market analysis.",
+      description: "Get expert trading signals for crypto and forex powered by machine learning.",
       color: 'blue',
     },
     {
@@ -28,7 +28,7 @@ export const About = () => {
     {
       icon: Users,
       title: "Expert Support",
-      description: "24/7 customer support from crypto experts and financial advisors.",
+      description: "24/7 customer support from crypto and forex experts and financial advisors.",
       color: 'purple',
     }
   ];
@@ -52,9 +52,9 @@ export const About = () => {
             </span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Founded in 2019, CryptoVault has become the leading platform for cryptocurrency investment. 
-            Our mission is to democratize access to digital assets and empower everyone to participate 
-            in the future of finance.
+            Founded in 2019, CryptoVault has become the leading platform for cryptocurrency and forex investment. 
+            Our mission is to democratize access to global financial markets and empower everyone to participate 
+            in the future of trading.
           </p>
         </ScrollReveal>
 
@@ -66,19 +66,19 @@ export const About = () => {
               </h3>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  Cryptocurrency represents the biggest financial revolution since the invention of banking. 
-                  Bitcoin, launched in 2009, introduced the concept of decentralized digital money, 
-                  freeing transactions from traditional banking systems.
+                  The global financial markets offer unprecedented opportunities for investors. 
+                  With cryptocurrency's $2 trillion market cap and forex's $6.6 trillion daily volume, 
+                  you have access to the world's most liquid and dynamic markets.
                 </p>
                 <p>
-                  Since then, the crypto market has exploded to over $2 trillion in total value, 
-                  creating unprecedented opportunities for investors worldwide. From Ethereum's smart contracts 
-                  to DeFi protocols, blockchain technology is reshaping every aspect of finance.
+                  From Bitcoin's revolutionary blockchain technology to the major currency pairs 
+                  that drive global trade, our platform gives you the tools to capitalize on 
+                  market movements across both crypto and traditional forex markets.
                 </p>
                 <p>
                   At CryptoVault, we believe everyone deserves access to these opportunities. 
                   Our platform combines cutting-edge technology with intuitive design, 
-                  making crypto investment accessible to both beginners and experienced traders.
+                  making multi-asset trading accessible to both beginners and experienced traders.
                 </p>
               </div>
             </div>
