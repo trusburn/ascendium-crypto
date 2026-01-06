@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createChart, ColorType, IChartApi } from "lightweight-charts";
+import { createChart, ColorType, IChartApi, CandlestickSeries } from "lightweight-charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,46 +16,45 @@ const TradingViewChart = () => {
   const seriesRef = useRef<any>(null);
   const [cryptos, setCryptos] = useState<CryptoOption[]>([]);
   const [selectedCrypto, setSelectedCrypto] = useState<string>("bitcoin");
+  const [isLoading, setIsLoading] = useState(true);
 
   // Initialize chart once on mount
   useEffect(() => {
-    // Guard against double initialization (React Strict Mode)
     if (!chartContainerRef.current) return;
     if (chartRef.current) return;
 
     try {
       const chart = createChart(chartContainerRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: "transparent" },
-        textColor: "#d1d5db",
-      },
-      grid: {
-        vertLines: { color: "#1f2937" },
-        horzLines: { color: "#1f2937" },
-      },
-      width: chartContainerRef.current.clientWidth,
-      height: 400,
-    });
+        layout: {
+          background: { type: ColorType.Solid, color: "transparent" },
+          textColor: "#d1d5db",
+        },
+        grid: {
+          vertLines: { color: "#1f2937" },
+          horzLines: { color: "#1f2937" },
+        },
+        width: chartContainerRef.current.clientWidth,
+        height: 400,
+      });
 
-      const candlestickSeries = chart.addSeries({
-        type: 'Candlestick',
+      const candlestickSeries = chart.addSeries(CandlestickSeries, {
         upColor: "#10b981",
         downColor: "#ef4444",
         borderVisible: false,
         wickUpColor: "#10b981",
         wickDownColor: "#ef4444",
-      } as any);
+      });
 
       chartRef.current = chart;
       seriesRef.current = candlestickSeries;
 
-    const handleResize = () => {
-      if (chartContainerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-        });
-      }
-    };
+      const handleResize = () => {
+        if (chartContainerRef.current && chartRef.current) {
+          chartRef.current.applyOptions({
+            width: chartContainerRef.current.clientWidth,
+          });
+        }
+      };
 
       window.addEventListener("resize", handleResize);
 
@@ -82,7 +81,7 @@ const TradingViewChart = () => {
     if (selectedCrypto && seriesRef.current) {
       fetchChartData(selectedCrypto);
     }
-  }, [selectedCrypto]);
+  }, [selectedCrypto, seriesRef.current]);
 
   const fetchCryptos = async () => {
     try {
@@ -127,12 +126,13 @@ const TradingViewChart = () => {
   };
 
   const fetchChartData = async (cryptoId: string) => {
+    setIsLoading(true);
     try {
       if (!cryptoId) return;
       
-      // Fetch 7 days of OHLC data from CoinGecko
+      // Fetch 30 days of OHLC data from CoinGecko
       const response = await fetch(
-        `https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc?vs_currency=usd&days=7`
+        `https://api.coingecko.com/api/v3/coins/${cryptoId}/ohlc?vs_currency=usd&days=30`
       );
       
       if (!response.ok) {
@@ -151,10 +151,16 @@ const TradingViewChart = () => {
         }));
 
         seriesRef.current.setData(chartData);
+        
+        // Fit content to show all data
+        if (chartRef.current) {
+          chartRef.current.timeScale().fitContent();
+        }
       }
     } catch (error) {
       console.error("Error fetching chart data:", error);
-      // Don't crash - just leave the chart empty
+    } finally {
+      setIsLoading(false);
     }
   };
 
