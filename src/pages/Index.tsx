@@ -11,6 +11,8 @@ import {
   SignalsSection,
   TrustSection,
   CTASection,
+  ForexSection,
+  MarketChartsSection,
 } from '@/components/home';
 
 const Index = () => {
@@ -23,6 +25,8 @@ const Index = () => {
       <Hero />
       <StatsSection />
       <About />
+      <ForexSection />
+      <MarketChartsSection />
       <SecuritySection />
       <TradingEngineSection />
       <Services />

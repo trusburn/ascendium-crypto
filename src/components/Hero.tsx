@@ -35,14 +35,14 @@ export const Hero = () => {
             <ScrollReveal delay={0.1}>
               <h1 className="text-5xl lg:text-7xl font-bold leading-tight">
                 <span className="bg-crypto-gradient bg-clip-text text-transparent">
-                  {content.heroTitle}
+                  {content.heroTitle || 'Trade Crypto & Forex'}
                 </span>
               </h1>
             </ScrollReveal>
 
             <ScrollReveal delay={0.2}>
               <p className="text-xl text-muted-foreground max-w-2xl">
-                {content.heroSubtitle}
+                {content.heroSubtitle || 'Your gateway to global markets. Trade cryptocurrencies and forex with AI-powered signals and professional tools.'}
               </p>
             </ScrollReveal>
 
@@ -137,7 +137,7 @@ export const Hero = () => {
                 transition={{ duration: 4, repeat: Infinity, delay: 1 }}
               >
                 <div className="bg-crypto-blue/20 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-crypto-blue border border-crypto-blue/30">
-                  ₿ BTC
+                  € EUR/USD
                 </div>
               </motion.div>
               <motion.div 
@@ -146,7 +146,16 @@ export const Hero = () => {
                 transition={{ duration: 5, repeat: Infinity, delay: 2 }}
               >
                 <div className="bg-crypto-purple/20 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-crypto-purple border border-crypto-purple/30">
-                  Ξ ETH
+                  £ GBP/USD
+                </div>
+              </motion.div>
+              <motion.div 
+                className="absolute bottom-1/3 -right-12"
+                animate={{ y: [0, 12, 0] }}
+                transition={{ duration: 6, repeat: Infinity, delay: 3 }}
+              >
+                <div className="bg-crypto-gold/20 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-crypto-gold border border-crypto-gold/30">
+                  ₿ BTC
                 </div>
               </motion.div>
             </div>

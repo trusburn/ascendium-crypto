@@ -12,7 +12,7 @@ interface CryptoSymbol {
   opacity: number;
 }
 
-const cryptoSymbols = ['₿', 'Ξ', '◈', '◆', '⟐'];
+const cryptoSymbols = ['₿', 'Ξ', '◈', '◆', '⟐', '$', '€', '£', '¥'];
 
 export const FloatingCrypto = () => {
   const [symbols, setSymbols] = useState<CryptoSymbol[]>([]);

@@ -12,9 +12,9 @@ export const Services = () => {
       name: "Starter",
       price: "$99",
       period: "/month",
-      description: "Perfect for crypto beginners",
+      description: "Perfect for beginners",
       features: [
-        "Basic trading signals",
+        "Basic crypto & forex signals",
         "5% monthly returns*",
         "Email support",
         "Mobile app access",
@@ -29,12 +29,12 @@ export const Services = () => {
       period: "/month",
       description: "For serious investors",
       features: [
-        "Advanced AI signals",
+        "Advanced AI signals (Crypto + Forex)",
         "12% monthly returns*",
         "Priority support",
         "Advanced analytics",
         "Portfolio management",
-        "DeFi opportunities"
+        "DeFi & Forex opportunities"
       ],
       popular: true,
       glow: 'purple' as const,
@@ -49,7 +49,7 @@ export const Services = () => {
         "25% monthly returns*",
         "Dedicated account manager",
         "Custom strategies",
-        "Institutional tools",
+        "Institutional forex access",
         "Early access features",
         "VIP community access"
       ],
@@ -62,25 +62,25 @@ export const Services = () => {
     {
       icon: TrendingUp,
       title: "Smart Trading",
-      description: "AI-powered algorithms execute trades 24/7 to maximize your returns",
+      description: "AI-powered algorithms execute crypto and forex trades 24/7 to maximize your returns",
       color: 'green',
     },
     {
       icon: BarChart3,
-      title: "Portfolio Analytics",
-      description: "Advanced analytics and insights to track and optimize your investments",
+      title: "Multi-Market Analytics",
+      description: "Advanced analytics for both cryptocurrency and forex markets in one dashboard",
       color: 'blue',
     },
     {
       icon: Shield,
       title: "Risk Management",
-      description: "Sophisticated risk controls to protect your capital in volatile markets",
+      description: "Sophisticated risk controls to protect your capital across all market conditions",
       color: 'purple',
     },
     {
       icon: Zap,
       title: "Instant Execution",
-      description: "Lightning-fast order execution with minimal slippage and fees",
+      description: "Lightning-fast order execution on crypto and forex with minimal slippage",
       color: 'gold',
     }
   ];
@@ -98,7 +98,7 @@ export const Services = () => {
             </span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Professional-grade trading tools and services designed to maximize your crypto investment returns
+            Professional-grade trading tools and services designed to maximize your crypto and forex investment returns
           </p>
         </ScrollReveal>
 
