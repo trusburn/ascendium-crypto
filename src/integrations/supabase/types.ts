@@ -512,6 +512,10 @@ export type Database = {
         Args: { p_amount: number; p_user_id: string }
         Returns: boolean
       }
+      deduct_trade_from_balance: {
+        Args: { p_amount: number; p_balance_source: string; p_user_id: string }
+        Returns: boolean
+      }
       get_user_role: {
         Args: { check_user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
