@@ -154,8 +154,10 @@ export type Database = {
           avatar_url: string | null
           base_balance: number | null
           bio: string | null
+          btc_balance: number | null
           commissions: number | null
           created_at: string | null
+          eth_balance: number | null
           id: string
           interest_earned: number | null
           is_frozen: boolean
@@ -164,14 +166,17 @@ export type Database = {
           phone: string | null
           total_invested: number | null
           updated_at: string | null
+          usdt_balance: number | null
           username: string | null
         }
         Insert: {
           avatar_url?: string | null
           base_balance?: number | null
           bio?: string | null
+          btc_balance?: number | null
           commissions?: number | null
           created_at?: string | null
+          eth_balance?: number | null
           id: string
           interest_earned?: number | null
           is_frozen?: boolean
@@ -180,14 +185,17 @@ export type Database = {
           phone?: string | null
           total_invested?: number | null
           updated_at?: string | null
+          usdt_balance?: number | null
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
           base_balance?: number | null
           bio?: string | null
+          btc_balance?: number | null
           commissions?: number | null
           created_at?: string | null
+          eth_balance?: number | null
           id?: string
           interest_earned?: number | null
           is_frozen?: boolean
@@ -196,6 +204,7 @@ export type Database = {
           phone?: string | null
           total_invested?: number | null
           updated_at?: string | null
+          usdt_balance?: number | null
           username?: string | null
         }
         Relationships: []
@@ -487,6 +496,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_deposit: {
+        Args: { p_admin_id: string; p_deposit_id: string }
+        Returns: Json
+      }
+      approve_withdrawal: {
+        Args: { p_admin_id: string; p_withdrawal_id: string }
+        Returns: Json
+      }
       calculate_trade_profit: {
         Args: { p_engine_type?: string; p_trade_id: string }
         Returns: number
@@ -504,7 +521,17 @@ export type Database = {
         Args: { p_signal_id: string; p_user_id: string }
         Returns: Json
       }
+      recalculate_net_balance: { Args: { p_user_id: string }; Returns: number }
       stop_all_user_trades: { Args: { p_user_id: string }; Returns: Json }
+      swap_balances: {
+        Args: {
+          p_amount: number
+          p_from_balance: string
+          p_to_balance: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       sync_trading_profits: { Args: never; Returns: undefined }
       update_asset_based_profits: { Args: never; Returns: undefined }
       update_live_interest_earned: { Args: never; Returns: undefined }

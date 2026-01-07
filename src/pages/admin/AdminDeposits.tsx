@@ -65,57 +65,30 @@ export default function AdminDeposits() {
 
   const handleApproveDeposit = async (depositId: string) => {
     try {
-      // First get the deposit details
-      const { data: deposit, error: fetchError } = await supabase
-        .from('deposits')
-        .select('*')
-        .eq('id', depositId)
-        .single();
+      // Use the new approve_deposit RPC function
+      const { data, error } = await supabase.rpc('approve_deposit', {
+        p_deposit_id: depositId,
+        p_admin_id: user?.id
+      });
 
-      if (fetchError) throw fetchError;
+      if (error) throw error;
 
-      // Update deposit status
-      const { error: updateError } = await supabase
-        .from('deposits')
-        .update({ 
-          status: 'approved',
-          approved_by: user?.id,
-          approved_at: new Date().toISOString()
-        })
-        .eq('id', depositId);
+      const result = data as { success: boolean; error?: string; amount?: number; crypto_type?: string; user_id?: string };
 
-      if (updateError) throw updateError;
-
-      // Credit the amount to user's base_balance
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('base_balance, net_balance')
-        .eq('id', deposit.user_id)
-        .single();
-
-      const newBaseBalance = (profile?.base_balance || 0) + deposit.amount;
-      const newNetBalance = (profile?.net_balance || 0) + deposit.amount;
-      
-      const { error: profileUpdateError } = await supabase
-        .from('profiles')
-        .update({ 
-          base_balance: newBaseBalance,
-          net_balance: newNetBalance
-        })
-        .eq('id', deposit.user_id);
-
-      if (profileUpdateError) throw profileUpdateError;
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to approve deposit');
+      }
 
       // Send notification email
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      if (session && result.user_id) {
         await supabase.functions.invoke('send-notification', {
           body: {
             type: 'deposit_approved',
-            userId: deposit.user_id,
+            userId: result.user_id,
             data: {
-              amount: deposit.amount,
-              cryptoType: deposit.crypto_type
+              amount: result.amount,
+              cryptoType: result.crypto_type
             }
           },
           headers: {
@@ -126,7 +99,7 @@ export default function AdminDeposits() {
 
       toast({
         title: "Success",
-        description: `Deposit of $${deposit.amount} approved and credited to user balance`
+        description: `Deposit of $${result.amount} approved and credited to user's ${result.crypto_type} balance`
       });
 
       fetchDeposits();
@@ -194,6 +167,15 @@ export default function AdminDeposits() {
     }
   };
 
+  const getCryptoBalanceLabel = (cryptoType: string) => {
+    switch (cryptoType) {
+      case 'bitcoin': return 'BTC Balance';
+      case 'ethereum': return 'ETH Balance';
+      case 'usdt': return 'USDT Balance';
+      default: return 'USDT Balance';
+    }
+  };
+
   const filteredDeposits = deposits.filter(deposit => {
     const matchesSearch = 
       deposit.user_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -247,7 +229,7 @@ export default function AdminDeposits() {
       <div className="flex justify-between items-start">
         <div>
           <h2 className="text-2xl font-bold">Deposit Management</h2>
-          <p className="text-muted-foreground">Review and approve user deposits</p>
+          <p className="text-muted-foreground">Review and approve user deposits (credits to specific crypto balance)</p>
         </div>
         <div className="text-right">
           <div className="text-sm text-muted-foreground">Pending Actions</div>
@@ -331,7 +313,7 @@ export default function AdminDeposits() {
       <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>Deposits ({filteredDeposits.length})</CardTitle>
-          <CardDescription>Manage deposit requests and approvals</CardDescription>
+          <CardDescription>Manage deposit requests - approved deposits credit the specific crypto balance</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {/* Mobile-optimized scroll container */}
@@ -345,12 +327,13 @@ export default function AdminDeposits() {
               position: 'relative'
             }}
           >
-            <Table style={{ minWidth: '1000px', width: '1000px' }}>
+            <Table style={{ minWidth: '1100px', width: '1100px' }}>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="whitespace-nowrap">User ID</TableHead>
                     <TableHead className="whitespace-nowrap">Amount</TableHead>
                     <TableHead className="whitespace-nowrap">Crypto Type</TableHead>
+                    <TableHead className="whitespace-nowrap">Credits To</TableHead>
                     <TableHead className="whitespace-nowrap">Wallet Address</TableHead>
                     <TableHead className="whitespace-nowrap">Status</TableHead>
                     <TableHead className="whitespace-nowrap">Created</TableHead>
@@ -368,6 +351,11 @@ export default function AdminDeposits() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{deposit.crypto_type}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="bg-crypto-blue/10 text-crypto-blue">
+                          {getCryptoBalanceLabel(deposit.crypto_type)}
+                        </Badge>
                       </TableCell>
                       <TableCell className="font-mono text-xs max-w-32 truncate">
                         {deposit.wallet_address}
