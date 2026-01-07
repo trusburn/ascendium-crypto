@@ -56,6 +56,20 @@ const TIMEFRAMES = [
   { value: '1440', label: '1D' },
 ];
 
+// Base prices for all pairs
+const BASE_PRICES: Record<string, number> = {
+  'BTC/USDT': 94500, 'ETH/USDT': 3450, 'BNB/USDT': 680,
+  'SOL/USDT': 195, 'XRP/USDT': 2.35, 'ADA/USDT': 1.05,
+  'DOGE/USDT': 0.38, 'AVAX/USDT': 42, 'DOT/USDT': 8.2,
+  'LINK/USDT': 24, 'TRX/USDT': 0.26, 'LTC/USDT': 115,
+  'MATIC/USDT': 0.58, 'TON/USDT': 6.2, 'SHIB/USDT': 0.000024,
+  'EUR/USD': 1.0850, 'GBP/USD': 1.2650, 'USD/JPY': 149.50,
+  'AUD/USD': 0.6550, 'USD/CHF': 0.8850, 'USD/CAD': 1.3550,
+  'NZD/USD': 0.6150, 'EUR/GBP': 0.8580, 'EUR/JPY': 162.20,
+  'GBP/JPY': 189.10, 'EUR/AUD': 1.6550, 'GBP/AUD': 1.9310,
+  'EUR/CAD': 1.4710, 'USD/SGD': 1.3450, 'USD/ZAR': 18.50,
+};
+
 interface PurchasedSignal {
   id: string;
   signal_id: string;
@@ -78,21 +92,26 @@ interface ActiveTrade {
 }
 
 // Generate fallback chart data when API fails
-const generateFallbackData = (basePrice: number, tradingEngine: string, numCandles = 100): any[] => {
+const generateFallbackData = (basePrice: number, tradingEngine: string, numCandles = 100): CandleData[] => {
   const now = Math.floor(Date.now() / 1000);
   const interval = 900; // 15 minutes
   let lastClose = basePrice;
-  const data = [];
+  const data: CandleData[] = [];
   
   for (let i = numCandles; i >= 0; i--) {
-    const time = (now - i * interval) as UTCTimestamp;
+    const time = now - i * interval;
     const volatility = basePrice * 0.002;
     
     let change;
     if (tradingEngine === 'rising') {
+      // Rising: Always trending up with small dips
       change = (Math.random() * volatility * 0.5) + (volatility * 0.1);
     } else {
-      change = (Math.random() - 0.5) * volatility * 2;
+      // General: Realistic market movement with waves
+      const wave1 = Math.sin((now - i * interval) / 50000) * volatility * 1.5;
+      const wave2 = Math.sin((now - i * interval) / 12000) * volatility;
+      const noise = (Math.random() - 0.5) * volatility * 2;
+      change = wave1 + wave2 + noise;
     }
     
     const open = lastClose;
@@ -130,9 +149,10 @@ const TradingChart = () => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<any>(null);
+  const chartInitializedRef = useRef(false);
   
   // Free market data hook (CoinGecko + simulation)
-  const { fetchCandleData, fetchCurrentPrice, calculateProfit, getDataSource, loading: marketDataLoading } = useMarketData();
+  const { fetchCandleData, fetchCurrentPrice, calculateProfit, getDataSource } = useMarketData();
   
   // Market selection state
   const [marketType, setMarketType] = useState<'crypto' | 'forex'>('crypto');
@@ -159,8 +179,7 @@ const TradingChart = () => {
   const [priceChange, setPriceChange] = useState<number>(0);
   const [priceChangePercent, setPriceChangePercent] = useState<number>(0);
   const [stoppingTradeId, setStoppingTradeId] = useState<string | null>(null);
-  const [dataSource, setDataSource] = useState<'live' | 'fallback'>('live');
-  const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
+  const [dataSource, setDataSource] = useState<'live' | 'simulated'>('live');
 
   // Get current pair data
   const getCurrentPairData = useCallback(() => {
@@ -170,9 +189,13 @@ const TradingChart = () => {
     return FOREX_PAIRS.find(p => p.symbol === selectedPair);
   }, [marketType, selectedPair]);
 
-  // Initialize chart
+  // Initialize chart - runs once on mount
   useEffect(() => {
-    if (!chartContainerRef.current || chartRef.current) return;
+    if (!chartContainerRef.current) return;
+    
+    // Prevent double initialization
+    if (chartInitializedRef.current) return;
+    chartInitializedRef.current = true;
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
@@ -210,7 +233,11 @@ const TradingChart = () => {
 
     chartRef.current = chart;
     seriesRef.current = candlestickSeries;
-    setChartReady(true);
+    
+    // Mark chart as ready after a small delay to ensure DOM is fully rendered
+    requestAnimationFrame(() => {
+      setChartReady(true);
+    });
 
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
@@ -219,6 +246,7 @@ const TradingChart = () => {
     };
 
     window.addEventListener('resize', handleResize);
+    
     return () => {
       window.removeEventListener('resize', handleResize);
       if (chartRef.current) {
@@ -226,71 +254,58 @@ const TradingChart = () => {
         chartRef.current = null;
         seriesRef.current = null;
       }
+      chartInitializedRef.current = false;
       setChartReady(false);
     };
   }, []);
 
-  // Base prices for fallback
-  const basePrices: Record<string, number> = {
-    'BTC/USDT': 92000, 'ETH/USDT': 3400, 'BNB/USDT': 620,
-    'SOL/USDT': 180, 'XRP/USDT': 2.20, 'ADA/USDT': 0.95,
-    'DOGE/USDT': 0.35, 'AVAX/USDT': 38, 'DOT/USDT': 7.5,
-    'LINK/USDT': 22, 'TRX/USDT': 0.24, 'LTC/USDT': 105,
-    'MATIC/USDT': 0.52, 'TON/USDT': 5.8, 'SHIB/USDT': 0.000022,
-    'EUR/USD': 1.085, 'GBP/USD': 1.265, 'USD/JPY': 149.5,
-    'AUD/USD': 0.655, 'USD/CHF': 0.885, 'USD/CAD': 1.355,
-    'NZD/USD': 0.615, 'EUR/GBP': 0.858, 'EUR/JPY': 162.2,
-    'GBP/JPY': 189.1, 'EUR/AUD': 1.655, 'GBP/AUD': 1.931,
-    'EUR/CAD': 1.471, 'USD/SGD': 1.345, 'USD/ZAR': 18.5,
-  };
-
-  // Fetch chart data when pair or timeframe changes
+  // Load chart data when ready or when pair/timeframe changes
   useEffect(() => {
-    if (!chartReady) return;
+    // Don't run until chart is ready
+    if (!chartReady || !seriesRef.current) {
+      return;
+    }
 
     let cancelled = false;
 
-    const fetchChartData = async () => {
-      if (!seriesRef.current) {
-        setChartLoading(false);
-        return;
-      }
-
+    const loadChartData = async () => {
       setChartLoading(true);
       setChartError(null);
 
+      const basePrice = BASE_PRICES[selectedPair] || 100;
+
       try {
-        const pairData = getCurrentPairData();
-        if (!pairData) {
-          throw new Error('Pair data not found');
-        }
-
         let chartData: CandleData[] = [];
-        const basePrice = basePrices[selectedPair] || 100;
 
-        // GENERAL MODE: Use free market data (CoinGecko for crypto, simulation for forex)
+        // GENERAL MODE: Use CoinGecko for crypto, simulation for forex
         if (tradingEngine === 'general') {
           chartData = await fetchCandleData(selectedPair, timeframe, marketType);
           const source = getDataSource(selectedPair, marketType);
-          setDataSource(source === 'coingecko' ? 'live' : 'fallback');
-          setLastPriceUpdate(new Date());
+          setDataSource(source === 'coingecko' ? 'live' : 'simulated');
         } else {
-          // RISING MODE: Use simulated upward-biased data
-          chartData = generateFallbackData(basePrice, tradingEngine);
-          setDataSource('fallback');
+          // RISING MODE: Always use upward-biased simulated data
+          chartData = generateFallbackData(basePrice, 'rising');
+          setDataSource('simulated');
         }
 
         if (cancelled) return;
 
-        if (chartData.length > 0) {
-          const formattedData = chartData.map((c) => ({
-            time: c.time as UTCTimestamp,
-            open: c.open,
-            high: c.high,
-            low: c.low,
-            close: c.close,
-          }));
+        // Always have fallback data ready
+        if (!chartData || chartData.length === 0) {
+          chartData = generateFallbackData(basePrice, tradingEngine);
+          setDataSource('simulated');
+        }
 
+        // Format and set data
+        const formattedData = chartData.map((c) => ({
+          time: c.time as UTCTimestamp,
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+        }));
+
+        if (seriesRef.current && formattedData.length > 0) {
           seriesRef.current.setData(formattedData);
           chartRef.current?.timeScale().fitContent();
 
@@ -301,15 +316,14 @@ const TradingChart = () => {
           setPriceChangePercent(((lastPrice - firstPrice) / firstPrice) * 100);
         }
       } catch (error) {
-        console.error('Error fetching chart data:', error);
-        setChartError('Chart data temporarily unavailable');
-        setDataSource('fallback');
+        console.warn('Error loading chart data:', error);
+        setChartError('Using simulated data');
+        setDataSource('simulated');
 
-        // Use fallback and still set price
-        const basePrice = basePrices[selectedPair] || 100;
+        // Use fallback data on error
         const fallbackData = generateFallbackData(basePrice, tradingEngine);
 
-        if (seriesRef.current && fallbackData.length > 0) {
+        if (!cancelled && seriesRef.current && fallbackData.length > 0) {
           seriesRef.current.setData(
             fallbackData.map((c) => ({
               time: c.time as UTCTimestamp,
@@ -322,19 +336,24 @@ const TradingChart = () => {
           setCurrentPrice(fallbackData[fallbackData.length - 1].close);
         }
       } finally {
-        if (!cancelled) setChartLoading(false);
+        if (!cancelled) {
+          setChartLoading(false);
+        }
       }
     };
 
-    fetchChartData();
-    // Poll more frequently for GENERAL mode (real market), less for RISING
+    // Load immediately
+    loadChartData();
+
+    // Set up polling - faster for GENERAL (live data), slower for RISING (simulated)
     const pollInterval = tradingEngine === 'general' ? 15000 : 30000;
-    const interval = setInterval(fetchChartData, pollInterval);
+    const interval = setInterval(loadChartData, pollInterval);
+
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [chartReady, selectedPair, timeframe, marketType, tradingEngine, getCurrentPairData, fetchCandleData, getDataSource]);
+  }, [chartReady, selectedPair, timeframe, marketType, tradingEngine, fetchCandleData, getDataSource]);
 
   // Live price updates for active trades in GENERAL mode
   useEffect(() => {
@@ -342,18 +361,15 @@ const TradingChart = () => {
 
     const updateTradePrices = async () => {
       try {
-        // Get current prices for all unique trading pairs in active trades
         const uniquePairs = [...new Set(activeTrades.map(t => t.trading_pair).filter(Boolean))];
-        
+
         for (const pair of uniquePairs) {
           if (!pair) continue;
-          const livePrice = await fetchCurrentPrice(pair, marketType);
-          
+          const pairMarketType = CRYPTO_PAIRS.some(p => p.symbol === pair) ? 'crypto' : 'forex';
+          const livePrice = await fetchCurrentPrice(pair, pairMarketType);
+
           if (livePrice) {
-            setLastPriceUpdate(new Date());
-            
-            // Update trades with this pair in the database with current_price
-            // This allows the DB function to calculate profit correctly
+            // Update trades with this pair in the database
             const tradesWithPair = activeTrades.filter(t => t.trading_pair === pair);
             for (const trade of tradesWithPair) {
               await supabase
@@ -362,11 +378,11 @@ const TradingChart = () => {
                 .eq('id', trade.id)
                 .eq('status', 'active');
             }
-            
+
             // Update local state with calculated profit
             setActiveTrades(prev => prev.map(trade => {
               if (trade.trading_pair !== pair || !trade.entry_price) return trade;
-              
+
               const direction = trade.trade_direction as 'buy' | 'sell';
               const newProfit = calculateProfit(
                 trade.entry_price,
@@ -374,7 +390,7 @@ const TradingChart = () => {
                 trade.initial_amount,
                 direction
               );
-              
+
               return { ...trade, current_profit: newProfit };
             }));
 
@@ -390,9 +406,9 @@ const TradingChart = () => {
     };
 
     updateTradePrices();
-    const interval = setInterval(updateTradePrices, 15000); // Update every 15s (rate limit friendly)
+    const interval = setInterval(updateTradePrices, 15000);
     return () => clearInterval(interval);
-  }, [tradingEngine, activeTrades.length, fetchCurrentPrice, calculateProfit, selectedPair, user]);
+  }, [tradingEngine, activeTrades.length, fetchCurrentPrice, calculateProfit, selectedPair, user, activeTrades]);
 
   // Fetch trading engine setting
   useEffect(() => {
@@ -412,7 +428,7 @@ const TradingChart = () => {
           .maybeSingle();
 
         const globalEngine = (globalSetting?.value as TradingEngineType) || 'rising';
-        
+
         if (userEngine?.engine_type === 'default' || !userEngine) {
           setTradingEngine(globalEngine);
         } else {
@@ -482,7 +498,7 @@ const TradingChart = () => {
     const fetchData = async () => {
       if (!user) return;
       try {
-        // Sync trading profits
+        // Sync trading profits in background
         await supabase.rpc('sync_trading_profits');
 
         // Fetch purchased signals (only for rising engine)
@@ -521,7 +537,7 @@ const TradingChart = () => {
 
         if (tradesData) {
           const signalIds = tradesData.map(t => t.signal_id).filter(Boolean);
-          const { data: signalsData } = signalIds.length > 0 
+          const { data: signalsData } = signalIds.length > 0
             ? await supabase.from('signals').select('id, name').in('id', signalIds)
             : { data: [] };
 
@@ -534,7 +550,7 @@ const TradingChart = () => {
           setActiveTrades(mergedTrades);
         }
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Error fetching data:', error);
       } finally {
         setLoading(false);
       }
@@ -551,8 +567,9 @@ const TradingChart = () => {
     setSelectedPair(value === 'crypto' ? 'BTC/USDT' : 'EUR/USD');
   };
 
-  // Handle trade
+  // Handle trade execution
   const handleTrade = async (type: 'buy' | 'sell') => {
+    // Validation checks
     if (!user) {
       toast({ title: "Error", description: "Please log in to trade", variant: "destructive" });
       return;
@@ -568,10 +585,17 @@ const TradingChart = () => {
       return;
     }
 
+    // Check current price is available
+    if (!currentPrice || currentPrice <= 0) {
+      toast({ title: "Error", description: "Waiting for price data. Please try again.", variant: "destructive" });
+      return;
+    }
+
     const selectedSignalData = tradingEngine === 'rising' ? purchasedSignals.find(s => s.id === selectedSignal) : null;
     const profitMultiplier = selectedSignalData?.profit_multiplier || 1.0;
     const selectedBalanceAmount = userBalances[selectedBalanceSource as keyof UserBalances] || 0;
 
+    // Check balance
     if (selectedBalanceAmount < tradeAmount) {
       const balanceLabel = BALANCE_OPTIONS.find(b => b.value === selectedBalanceSource)?.label || selectedBalanceSource;
       toast({
@@ -602,7 +626,7 @@ const TradingChart = () => {
 
       if (tradeError) {
         console.error('Error starting trade:', tradeError);
-        toast({ title: "Error", description: "Failed to start trade", variant: "destructive" });
+        toast({ title: "Error", description: tradeError.message || "Failed to start trade", variant: "destructive" });
         return;
       }
 
@@ -627,7 +651,7 @@ const TradingChart = () => {
 
       if (tradesData) {
         const signalIds = tradesData.map(t => t.signal_id).filter(Boolean);
-        const { data: signalsData } = signalIds.length > 0 
+        const { data: signalsData } = signalIds.length > 0
           ? await supabase.from('signals').select('id, name').in('id', signalIds)
           : { data: [] };
 
@@ -639,15 +663,16 @@ const TradingChart = () => {
 
         setActiveTrades(mergedTrades);
       }
-    } catch (error) {
-      console.error('Error:', error);
+    } catch (error: any) {
+      console.error('Trade error:', error);
+      toast({ title: "Error", description: error.message || "Failed to start trade", variant: "destructive" });
     }
   };
 
   // Handle stopping a single trade
   const handleStopSingleTrade = async (tradeId: string) => {
     if (!user) return;
-    
+
     setStoppingTradeId(tradeId);
     try {
       const { data: result, error } = await supabase.rpc('stop_single_trade', {
@@ -657,8 +682,8 @@ const TradingChart = () => {
 
       if (error) throw error;
 
-      const resultData = result as { 
-        success: boolean; 
+      const resultData = result as {
+        success: boolean;
         error?: string;
         trade_id?: string;
         initial_amount?: number;
@@ -669,21 +694,13 @@ const TradingChart = () => {
       };
 
       if (!resultData.success) {
-        toast({ 
-          title: "Error", 
-          description: resultData.error || "Failed to stop trade", 
-          variant: "destructive" 
+        toast({
+          title: "Error",
+          description: resultData.error || "Failed to stop trade",
+          variant: "destructive"
         });
         return;
       }
-
-      // Create transaction record
-      await supabase.from('transactions').insert({
-        user_id: user.id,
-        type: resultData.is_profit ? 'trade_profit' : 'trade_loss',
-        amount: resultData.profit || 0,
-        description: `${resultData.trade_type?.toUpperCase()} ${resultData.trading_pair} | Invested: $${resultData.initial_amount?.toFixed(2)} | ${resultData.is_profit ? 'Profit' : 'Loss'}: $${Math.abs(resultData.profit || 0).toFixed(2)}`,
-      });
 
       // Remove trade from local state
       setActiveTrades(prev => prev.filter(t => t.id !== tradeId));
@@ -696,10 +713,10 @@ const TradingChart = () => {
 
     } catch (error: any) {
       console.error('Stop trade error:', error);
-      toast({ 
-        title: "Error", 
-        description: error.message || "Failed to stop trade", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: error.message || "Failed to stop trade",
+        variant: "destructive"
       });
     } finally {
       setStoppingTradeId(null);
@@ -732,27 +749,25 @@ const TradingChart = () => {
                 <Activity className="mr-2 h-5 w-5 text-primary" />
                 {selectedPair}
               </CardTitle>
-              <Badge 
-                variant="outline" 
+              <Badge
+                variant="outline"
                 className={tradingEngine === 'rising' ? 'border-emerald-500 text-emerald-500' : 'border-amber-500 text-amber-500'}
               >
                 {tradingEngine === 'rising' ? <><TrendingUp className="h-3 w-3 mr-1" /> Rising</> : <><TrendingDown className="h-3 w-3 mr-1" /> General</>}
               </Badge>
-              {/* Data source indicator - only for General mode */}
-              {tradingEngine === 'general' && (
-                <Badge 
-                  variant="outline" 
-                  className={dataSource === 'live' ? 'border-cyan-500 text-cyan-500' : 'border-violet-500 text-violet-400'}
-                >
-                  {dataSource === 'live' ? (
-                    <><Globe className="h-3 w-3 mr-1" /> Live</>
-                  ) : (
-                    <><Cpu className="h-3 w-3 mr-1" /> Simulated</>
-                  )}
-                </Badge>
-              )}
+              {/* Data source indicator */}
+              <Badge
+                variant="outline"
+                className={dataSource === 'live' ? 'border-cyan-500 text-cyan-500' : 'border-violet-500 text-violet-400'}
+              >
+                {dataSource === 'live' ? (
+                  <><Globe className="h-3 w-3 mr-1" /> Live</>
+                ) : (
+                  <><Cpu className="h-3 w-3 mr-1" /> Simulated</>
+                )}
+              </Badge>
             </div>
-            
+
             {/* Price Display */}
             <div className="flex items-center gap-4">
               <div className="text-right">
@@ -763,7 +778,7 @@ const TradingChart = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Market Selection Controls */}
           <div className="flex flex-wrap gap-3 mt-4">
             <Select value={marketType} onValueChange={handleMarketTypeChange}>
@@ -775,7 +790,7 @@ const TradingChart = () => {
                 <SelectItem value="forex">Forex</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Select value={selectedPair} onValueChange={setSelectedPair}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select pair" />
@@ -789,7 +804,7 @@ const TradingChart = () => {
                 ))}
               </SelectContent>
             </Select>
-            
+
             <Select value={timeframe} onValueChange={setTimeframe}>
               <SelectTrigger className="w-[100px]">
                 <SelectValue placeholder="Timeframe" />
@@ -802,13 +817,21 @@ const TradingChart = () => {
             </Select>
           </div>
         </CardHeader>
-        
+
         <CardContent>
           {/* Chart Container */}
           <div className="relative rounded-lg overflow-hidden border border-border bg-slate-950">
             {chartLoading && (
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/80">
                 <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            )}
+            {chartError && (
+              <div className="absolute top-2 right-2 z-20">
+                <Badge variant="outline" className="border-yellow-500/50 text-yellow-500 text-xs">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  {chartError}
+                </Badge>
               </div>
             )}
             <div ref={chartContainerRef} className="w-full h-[400px]" />
@@ -835,7 +858,7 @@ const TradingChart = () => {
                   </Select>
                 </div>
               )}
-              
+
               <div>
                 <label className="text-sm font-medium mb-2 block">
                   <Wallet className="inline h-4 w-4 mr-1" />
@@ -866,7 +889,7 @@ const TradingChart = () => {
                   {!isTradeAmountValid && tradeAmount > 0 && ' (Insufficient)'}
                 </p>
               </div>
-              
+
               <div>
                 <label className="text-sm font-medium mb-2 block">Trade Amount</label>
                 <div className="flex items-center space-x-2">
@@ -900,7 +923,7 @@ const TradingChart = () => {
             <div className="flex space-x-4">
               <Button
                 onClick={() => handleTrade('buy')}
-                disabled={(tradingEngine === 'rising' && !selectedSignal) || !isTradeAmountValid}
+                disabled={(tradingEngine === 'rising' && !selectedSignal) || !isTradeAmountValid || currentPrice <= 0}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-700"
               >
                 <TrendingUp className="mr-2 h-4 w-4" />
@@ -908,7 +931,7 @@ const TradingChart = () => {
               </Button>
               <Button
                 onClick={() => handleTrade('sell')}
-                disabled={(tradingEngine === 'rising' && !selectedSignal) || !isTradeAmountValid}
+                disabled={(tradingEngine === 'rising' && !selectedSignal) || !isTradeAmountValid || currentPrice <= 0}
                 variant="outline"
                 className="flex-1 border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
               >
@@ -946,12 +969,12 @@ const TradingChart = () => {
                 const profitPercent = ((trade.current_profit || 0) / trade.initial_amount) * 100;
                 const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
                 const isLiquidationRisk = equity <= trade.initial_amount * 0.2;
-                
+
                 return (
-                  <div 
-                    key={trade.id} 
+                  <div
+                    key={trade.id}
                     className={`flex items-center justify-between p-4 bg-background rounded-lg border ${
-                      isLiquidationRisk ? 'border-red-500/50 bg-red-500/5' : ''
+                      isLiquidationRisk ? 'border-red-500/50 bg-red-500/5' : 'border-border'
                     }`}
                   >
                     <div className="flex items-center space-x-3">
