@@ -539,18 +539,33 @@ const TradingChart = () => {
 
       const entryPrice = assetData.current_price;
 
+      // Get current asset info for trading pair
+      const currentAssets = assetType === 'crypto' ? cryptoAssets : forexAssets;
+      const selectedAssetData = currentAssets.find(a => a.id === selectedAsset);
+      const tradingPair = selectedAssetData?.symbol || 'UNKNOWN';
+
       // Use the validated trade function (handles engine validation + balance deduction)
+      // Pass empty string for null UUIDs to avoid type issues, backend handles conversion
+      const signalId = tradingEngine === 'rising' && selectedSignalData?.signal_id 
+        ? selectedSignalData.signal_id 
+        : '00000000-0000-0000-0000-000000000000';
+      const purchasedSignalId = tradingEngine === 'rising' && selectedSignal 
+        ? selectedSignal 
+        : '00000000-0000-0000-0000-000000000000';
+
       const { data: tradeResult, error: tradeError } = await supabase
         .rpc('start_trade_validated', {
           p_user_id: user.id,
-          p_signal_id: tradingEngine === 'rising' ? selectedSignalData?.signal_id : null,
-          p_purchased_signal_id: tradingEngine === 'rising' ? selectedSignal : null,
+          p_signal_id: signalId,
+          p_purchased_signal_id: purchasedSignalId,
           p_trade_type: type,
           p_initial_amount: tradeAmount,
           p_profit_multiplier: profitMultiplier,
           p_asset_id: selectedAsset,
           p_entry_price: entryPrice,
           p_balance_source: selectedBalanceSource,
+          p_trading_pair: tradingPair,
+          p_market_type: assetType,
         });
 
       if (tradeError) {
