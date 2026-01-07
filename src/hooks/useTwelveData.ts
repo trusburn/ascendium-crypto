@@ -67,8 +67,10 @@ const timeframeMapping: Record<string, string> = {
 };
 
 // Rate limiting - max 8 calls per minute for free tier
-const RATE_LIMIT_INTERVAL = 8000; // ~7.5 calls per minute
+const RATE_LIMIT_INTERVAL = 10000; // ~6 calls per minute (safer margin)
 let lastCallTime = 0;
+let callQueue: (() => void)[] = [];
+let isProcessingQueue = false;
 
 const waitForRateLimit = async (): Promise<void> => {
   const now = Date.now();
@@ -79,9 +81,13 @@ const waitForRateLimit = async (): Promise<void> => {
   lastCallTime = Date.now();
 };
 
-// Cache for price data
+// Cache for price data - extended TTL to reduce API calls
 const priceCache = new Map<string, { price: number; timestamp: number }>();
-const CACHE_TTL = 30000; // 30 seconds
+const CACHE_TTL = 45000; // 45 seconds (increased for rate limiting)
+
+// Cache for candle data
+const candleCache = new Map<string, { candles: any[]; timestamp: number }>();
+const CANDLE_CACHE_TTL = 60000; // 60 seconds
 
 export const useTwelveData = () => {
   const [loading, setLoading] = useState(false);
@@ -122,12 +128,20 @@ export const useTwelveData = () => {
     }
   }, []);
 
-  // Fetch candlestick data for chart
+  // Fetch candlestick data for chart with caching
   const fetchCandleData = useCallback(async (
     tradingPair: string,
     timeframe: string,
     marketType: 'crypto' | 'forex'
   ): Promise<CandleData[]> => {
+    const cacheKey = `${tradingPair}-${timeframe}`;
+    const cached = candleCache.get(cacheKey);
+    
+    // Return cached candles if still valid
+    if (cached && Date.now() - cached.timestamp < CANDLE_CACHE_TTL) {
+      return cached.candles;
+    }
+
     // Cancel previous request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -168,9 +182,10 @@ export const useTwelveData = () => {
           .filter((c: CandleData) => !isNaN(c.open) && !isNaN(c.close));
 
         if (candles.length > 0) {
-          // Update cache with latest price
+          // Update both caches
           const latestPrice = candles[candles.length - 1].close;
           priceCache.set(tradingPair, { price: latestPrice, timestamp: Date.now() });
+          candleCache.set(cacheKey, { candles, timestamp: Date.now() });
         }
 
         setLoading(false);
@@ -185,6 +200,11 @@ export const useTwelveData = () => {
       console.warn('Twelve Data candle fetch failed:', err);
       setError(err.message || 'Failed to fetch market data');
       setLoading(false);
+      
+      // Return cached data even if expired on error
+      if (cached) {
+        return cached.candles;
+      }
       return [];
     }
   }, []);
