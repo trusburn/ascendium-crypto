@@ -330,7 +330,7 @@ const TradingChart = () => {
 
   // Live price updates for active trades in GENERAL mode
   useEffect(() => {
-    if (tradingEngine !== 'general' || activeTrades.length === 0) return;
+    if (tradingEngine !== 'general' || activeTrades.length === 0 || !user) return;
 
     const updateTradePrices = async () => {
       try {
@@ -344,7 +344,18 @@ const TradingChart = () => {
           if (livePrice) {
             setLastPriceUpdate(new Date());
             
-            // Update trades with this pair
+            // Update trades with this pair in the database with current_price
+            // This allows the DB function to calculate profit correctly
+            const tradesWithPair = activeTrades.filter(t => t.trading_pair === pair);
+            for (const trade of tradesWithPair) {
+              await supabase
+                .from('trades')
+                .update({ current_price: livePrice, last_updated: new Date().toISOString() })
+                .eq('id', trade.id)
+                .eq('status', 'active');
+            }
+            
+            // Update local state with calculated profit
             setActiveTrades(prev => prev.map(trade => {
               if (trade.trading_pair !== pair || !trade.entry_price) return trade;
               
@@ -371,9 +382,9 @@ const TradingChart = () => {
     };
 
     updateTradePrices();
-    const interval = setInterval(updateTradePrices, 10000); // Update every 10s
+    const interval = setInterval(updateTradePrices, 15000); // Update every 15s (rate limit friendly)
     return () => clearInterval(interval);
-  }, [tradingEngine, activeTrades.length, fetchCurrentPrice, calculateProfit, selectedPair]);
+  }, [tradingEngine, activeTrades.length, fetchCurrentPrice, calculateProfit, selectedPair, user]);
 
   // Fetch trading engine setting
   useEffect(() => {
