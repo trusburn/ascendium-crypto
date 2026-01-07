@@ -4,10 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { TrendingUp, TrendingDown, Activity, DollarSign, Wallet, RefreshCw, StopCircle, AlertTriangle } from 'lucide-react';
+import { useTwelveData, CandleData } from '@/hooks/useTwelveData';
+import { TrendingUp, TrendingDown, Activity, DollarSign, Wallet, RefreshCw, StopCircle, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 // Trading Pairs Configuration
@@ -131,6 +131,9 @@ const TradingChart = () => {
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<any>(null);
   
+  // Twelve Data hook for GENERAL mode
+  const { fetchCandleData, fetchCurrentPrice, calculateProfit, loading: twelveDataLoading } = useTwelveData();
+  
   // Market selection state
   const [marketType, setMarketType] = useState<'crypto' | 'forex'>('crypto');
   const [selectedPair, setSelectedPair] = useState<string>('BTC/USDT');
@@ -155,6 +158,8 @@ const TradingChart = () => {
   const [priceChange, setPriceChange] = useState<number>(0);
   const [priceChangePercent, setPriceChangePercent] = useState<number>(0);
   const [stoppingTradeId, setStoppingTradeId] = useState<string | null>(null);
+  const [dataSource, setDataSource] = useState<'live' | 'fallback'>('live');
+  const [lastPriceUpdate, setLastPriceUpdate] = useState<Date | null>(null);
 
   // Get current pair data
   const getCurrentPairData = useCallback(() => {
@@ -222,6 +227,20 @@ const TradingChart = () => {
     };
   }, []);
 
+  // Base prices for fallback
+  const basePrices: Record<string, number> = {
+    'BTC/USDT': 92000, 'ETH/USDT': 3400, 'BNB/USDT': 620,
+    'SOL/USDT': 180, 'XRP/USDT': 2.20, 'ADA/USDT': 0.95,
+    'DOGE/USDT': 0.35, 'AVAX/USDT': 38, 'DOT/USDT': 7.5,
+    'LINK/USDT': 22, 'TRX/USDT': 0.24, 'LTC/USDT': 105,
+    'MATIC/USDT': 0.52, 'TON/USDT': 5.8, 'SHIB/USDT': 0.000022,
+    'EUR/USD': 1.085, 'GBP/USD': 1.265, 'USD/JPY': 149.5,
+    'AUD/USD': 0.655, 'USD/CHF': 0.885, 'USD/CAD': 1.355,
+    'NZD/USD': 0.615, 'EUR/GBP': 0.858, 'EUR/JPY': 162.2,
+    'GBP/JPY': 189.1, 'EUR/AUD': 1.655, 'GBP/AUD': 1.931,
+    'EUR/CAD': 1.471, 'USD/SGD': 1.345, 'USD/ZAR': 18.5,
+  };
+
   // Fetch chart data when pair or timeframe changes
   useEffect(() => {
     const fetchChartData = async () => {
@@ -235,97 +254,41 @@ const TradingChart = () => {
           throw new Error('Pair data not found');
         }
 
-        let chartData: any[] = [];
+        let chartData: CandleData[] = [];
+        const basePrice = basePrices[selectedPair] || 100;
 
-        if (marketType === 'crypto') {
-          const cryptoPair = pairData as typeof CRYPTO_PAIRS[0];
-          const days = timeframe === '1440' ? 30 : timeframe === '240' ? 7 : 1;
-          
+        // GENERAL MODE: Use Twelve Data real market feed
+        if (tradingEngine === 'general') {
           try {
-            const response = await fetch(
-              `https://api.coingecko.com/api/v3/coins/${cryptoPair.apiId}/ohlc?vs_currency=usd&days=${days}`,
-              { signal: AbortSignal.timeout(10000) }
-            );
+            chartData = await fetchCandleData(selectedPair, timeframe, marketType);
             
-            if (!response.ok) {
-              throw new Error(`API error: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            if (Array.isArray(data) && data.length > 0) {
-              if (tradingEngine === 'rising') {
-                let minClose = data[0][4];
-                chartData = data.map((item: number[], idx: number) => {
-                  const baseClose = item[4];
-                  const upwardBias = (idx / data.length) * (baseClose * 0.05);
-                  const adjustedClose = Math.max(minClose, baseClose) + upwardBias;
-                  minClose = adjustedClose;
-                  return {
-                    time: Math.floor(item[0] / 1000) as UTCTimestamp,
-                    open: item[1] + upwardBias * 0.8,
-                    high: Math.max(item[2], adjustedClose) + upwardBias * 0.2,
-                    low: Math.max(item[3], item[1] * 0.99),
-                    close: adjustedClose,
-                  };
-                });
-              } else {
-                chartData = data.map((item: number[]) => ({
-                  time: Math.floor(item[0] / 1000) as UTCTimestamp,
-                  open: item[1],
-                  high: item[2],
-                  low: item[3],
-                  close: item[4],
-                }));
-              }
+            if (chartData.length > 0) {
+              setDataSource('live');
+              setLastPriceUpdate(new Date());
             } else {
-              throw new Error('No data received');
+              throw new Error('No candle data received');
             }
-          } catch (fetchError) {
-            console.warn('Crypto API failed, using fallback data:', fetchError);
-            // Use fallback data based on typical prices
-            const basePrices: Record<string, number> = {
-              'BTC/USDT': 42500, 'ETH/USDT': 2500, 'BNB/USDT': 310,
-              'SOL/USDT': 95, 'XRP/USDT': 0.55, 'ADA/USDT': 0.45,
-              'DOGE/USDT': 0.08, 'AVAX/USDT': 35, 'DOT/USDT': 7,
-              'LINK/USDT': 14, 'TRX/USDT': 0.11, 'LTC/USDT': 70,
-              'MATIC/USDT': 0.85, 'TON/USDT': 2.5, 'SHIB/USDT': 0.000009,
-            };
-            chartData = generateFallbackData(basePrices[selectedPair] || 100, tradingEngine);
+          } catch (apiError) {
+            console.warn('Twelve Data API failed, using fallback:', apiError);
+            chartData = generateFallbackData(basePrice, tradingEngine);
+            setDataSource('fallback');
           }
         } else {
-          // Generate forex data
-          const forexPair = pairData as typeof FOREX_PAIRS[0];
-          const baseRate = forexPair.baseRate;
-          const numCandles = 100;
-          const now = Math.floor(Date.now() / 1000);
-          const interval = parseInt(timeframe) * 60;
-          
-          let lastClose = baseRate;
-          
-          for (let i = numCandles; i >= 0; i--) {
-            const time = (now - i * interval) as UTCTimestamp;
-            const volatility = baseRate * 0.0015;
-            
-            let change;
-            if (tradingEngine === 'rising') {
-              change = (Math.random() * volatility * 0.8);
-            } else {
-              change = (Math.random() - 0.5) * volatility * 2;
-            }
-            
-            const open = lastClose;
-            const close = open + change;
-            const high = Math.max(open, close) + Math.random() * volatility * 0.5;
-            const low = Math.min(open, close) - Math.random() * volatility * 0.5;
-            
-            chartData.push({ time, open, high, low, close });
-            lastClose = close;
-          }
+          // RISING MODE: Use simulated upward-biased data
+          chartData = generateFallbackData(basePrice, tradingEngine);
+          setDataSource('fallback');
         }
 
         if (chartData.length > 0) {
-          seriesRef.current.setData(chartData);
+          const formattedData = chartData.map(c => ({
+            time: c.time as UTCTimestamp,
+            open: c.open,
+            high: c.high,
+            low: c.low,
+            close: c.close,
+          }));
+          
+          seriesRef.current.setData(formattedData);
           chartRef.current?.timeScale().fitContent();
           
           const lastPrice = chartData[chartData.length - 1].close;
@@ -337,21 +300,80 @@ const TradingChart = () => {
       } catch (error) {
         console.error('Error fetching chart data:', error);
         setChartError('Chart data temporarily unavailable');
+        setDataSource('fallback');
         
-        // Still set a reasonable price for trading
-        const basePrices: Record<string, number> = {
-          'BTC/USDT': 42500, 'ETH/USDT': 2500, 'EUR/USD': 1.085,
-        };
-        setCurrentPrice(basePrices[selectedPair] || 100);
+        // Use fallback and still set price
+        const basePrice = basePrices[selectedPair] || 100;
+        const fallbackData = generateFallbackData(basePrice, tradingEngine);
+        
+        if (seriesRef.current && fallbackData.length > 0) {
+          seriesRef.current.setData(fallbackData.map(c => ({
+            time: c.time as UTCTimestamp,
+            open: c.open,
+            high: c.high,
+            low: c.low,
+            close: c.close,
+          })));
+          setCurrentPrice(fallbackData[fallbackData.length - 1].close);
+        }
       } finally {
         setChartLoading(false);
       }
     };
 
     fetchChartData();
-    const interval = setInterval(fetchChartData, 30000);
+    // Poll more frequently for GENERAL mode (real market), less for RISING
+    const pollInterval = tradingEngine === 'general' ? 15000 : 30000;
+    const interval = setInterval(fetchChartData, pollInterval);
     return () => clearInterval(interval);
-  }, [selectedPair, timeframe, marketType, tradingEngine, getCurrentPairData]);
+  }, [selectedPair, timeframe, marketType, tradingEngine, getCurrentPairData, fetchCandleData]);
+
+  // Live price updates for active trades in GENERAL mode
+  useEffect(() => {
+    if (tradingEngine !== 'general' || activeTrades.length === 0) return;
+
+    const updateTradePrices = async () => {
+      try {
+        // Get current prices for all unique trading pairs in active trades
+        const uniquePairs = [...new Set(activeTrades.map(t => t.trading_pair).filter(Boolean))];
+        
+        for (const pair of uniquePairs) {
+          if (!pair) continue;
+          const livePrice = await fetchCurrentPrice(pair);
+          
+          if (livePrice) {
+            setLastPriceUpdate(new Date());
+            
+            // Update trades with this pair
+            setActiveTrades(prev => prev.map(trade => {
+              if (trade.trading_pair !== pair || !trade.entry_price) return trade;
+              
+              const direction = trade.trade_direction as 'buy' | 'sell';
+              const newProfit = calculateProfit(
+                trade.entry_price,
+                livePrice,
+                trade.initial_amount,
+                direction
+              );
+              
+              return { ...trade, current_profit: newProfit };
+            }));
+
+            // Update current price display if it's the selected pair
+            if (pair === selectedPair) {
+              setCurrentPrice(livePrice);
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to update live prices:', error);
+      }
+    };
+
+    updateTradePrices();
+    const interval = setInterval(updateTradePrices, 10000); // Update every 10s
+    return () => clearInterval(interval);
+  }, [tradingEngine, activeTrades.length, fetchCurrentPrice, calculateProfit, selectedPair]);
 
   // Fetch trading engine setting
   useEffect(() => {
@@ -697,6 +719,19 @@ const TradingChart = () => {
               >
                 {tradingEngine === 'rising' ? <><TrendingUp className="h-3 w-3 mr-1" /> Rising</> : <><TrendingDown className="h-3 w-3 mr-1" /> General</>}
               </Badge>
+              {/* Data source indicator - only for General mode */}
+              {tradingEngine === 'general' && (
+                <Badge 
+                  variant="outline" 
+                  className={dataSource === 'live' ? 'border-cyan-500 text-cyan-500' : 'border-gray-500 text-gray-400'}
+                >
+                  {dataSource === 'live' ? (
+                    <><Wifi className="h-3 w-3 mr-1" /> Twelve Data</>
+                  ) : (
+                    <><WifiOff className="h-3 w-3 mr-1" /> Cached</>
+                  )}
+                </Badge>
+              )}
             </div>
             
             {/* Price Display */}
