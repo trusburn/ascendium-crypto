@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { TrendingUp, TrendingDown, Activity, DollarSign, Bitcoin, DollarSign as Forex } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, DollarSign, Bitcoin, DollarSign as Forex, Wallet } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface PurchasedSignal {
@@ -48,6 +48,22 @@ type TradingEngineType = 'rising' | 'general';
 // NOTE: Profit calculation is now done entirely in the DATABASE via PostgreSQL functions
 // Frontend only reads current_profit from the trades table - NO client-side calculations
 
+interface UserBalances {
+  btc_balance: number;
+  eth_balance: number;
+  usdt_balance: number;
+  interest_earned: number;
+  commissions: number;
+}
+
+const BALANCE_OPTIONS = [
+  { value: 'btc_balance', label: 'Bitcoin (BTC)', key: 'btc_balance' },
+  { value: 'eth_balance', label: 'Ethereum (ETH)', key: 'eth_balance' },
+  { value: 'usdt_balance', label: 'Tether (USDT)', key: 'usdt_balance' },
+  { value: 'interest_earned', label: 'Interest Earned', key: 'interest_earned' },
+  { value: 'commissions', label: 'Commissions', key: 'commissions' },
+] as const;
+
 const TradingChart = () => {
   const { user } = useAuth();
   const [purchasedSignals, setPurchasedSignals] = useState<PurchasedSignal[]>([]);
@@ -55,6 +71,14 @@ const TradingChart = () => {
   const [selectedSignal, setSelectedSignal] = useState<string>('');
   const [selectedAsset, setSelectedAsset] = useState<string>('');
   const [tradeAmount, setTradeAmount] = useState<number>(100);
+  const [selectedBalanceSource, setSelectedBalanceSource] = useState<string>('usdt_balance');
+  const [userBalances, setUserBalances] = useState<UserBalances>({
+    btc_balance: 0,
+    eth_balance: 0,
+    usdt_balance: 0,
+    interest_earned: 0,
+    commissions: 0,
+  });
   const [chartData, setChartData] = useState<CandlestickData[]>([]);
   const [loading, setLoading] = useState(true);
   const [cryptoAssets, setCryptoAssets] = useState<TradeableAsset[]>([]);
@@ -102,6 +126,63 @@ const TradingChart = () => {
       .channel('trading-engine-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_settings' }, fetchTradingEngine)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_trading_engines' }, fetchTradingEngine)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  // Fetch user balances
+  useEffect(() => {
+    const fetchBalances = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('btc_balance, eth_balance, usdt_balance, interest_earned, commissions')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+
+        setUserBalances({
+          btc_balance: Number(data?.btc_balance || 0),
+          eth_balance: Number(data?.eth_balance || 0),
+          usdt_balance: Number(data?.usdt_balance || 0),
+          interest_earned: Number(data?.interest_earned || 0),
+          commissions: Number(data?.commissions || 0),
+        });
+      } catch (error) {
+        console.error('Error fetching balances:', error);
+      }
+    };
+
+    fetchBalances();
+
+    // Subscribe to profile changes
+    const channel = supabase
+      .channel(`user-balances-${user?.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user?.id}`
+        },
+        (payload) => {
+          const newData = payload.new as any;
+          setUserBalances({
+            btc_balance: Number(newData?.btc_balance || 0),
+            eth_balance: Number(newData?.eth_balance || 0),
+            usdt_balance: Number(newData?.usdt_balance || 0),
+            interest_earned: Number(newData?.interest_earned || 0),
+            commissions: Number(newData?.commissions || 0),
+          });
+        }
+      )
       .subscribe();
 
     return () => {
@@ -388,39 +469,33 @@ const TradingChart = () => {
       return;
     }
 
+    if (!selectedBalanceSource) {
+      toast({
+        title: "Error",
+        description: "Please select a balance source",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const selectedSignalData = purchasedSignals.find(s => s.id === selectedSignal);
     if (!selectedSignalData) return;
 
+    // Get the selected balance amount
+    const selectedBalanceAmount = userBalances[selectedBalanceSource as keyof UserBalances] || 0;
+
+    // Check if user has enough balance in selected source
+    if (selectedBalanceAmount < tradeAmount) {
+      const balanceLabel = BALANCE_OPTIONS.find(b => b.value === selectedBalanceSource)?.label || selectedBalanceSource;
+      toast({
+        title: "Insufficient Balance",
+        description: `You need $${tradeAmount.toLocaleString()} to place this trade. ${balanceLabel} balance: $${selectedBalanceAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      // Get current profile data
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('net_balance, base_balance, total_invested')
-        .eq('id', user.id)
-        .single();
-
-      if (profileError) {
-        console.error('Error fetching profile:', profileError);
-        toast({
-          title: "Error",
-          description: "Failed to fetch profile data",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const currentBalance = Number(profileData.net_balance || 0);
-
-      // Check if user has enough balance
-      if (currentBalance < tradeAmount) {
-        toast({
-          title: "Insufficient Balance",
-          description: `You need $${tradeAmount} to place this trade. Current balance: $${currentBalance.toFixed(2)}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
       // Get current asset price
       const { data: assetData, error: assetError } = await supabase
         .from('tradeable_assets')
@@ -439,11 +514,12 @@ const TradingChart = () => {
 
       const entryPrice = assetData.current_price;
 
-      // FIRST: Deduct balance using secure database function
+      // Deduct from the selected balance source directly
       const { data: balanceDeducted, error: balanceError } = await supabase
-        .rpc('deduct_trade_balance', {
+        .rpc('deduct_trade_from_balance', {
           p_user_id: user.id,
           p_amount: tradeAmount,
+          p_balance_source: selectedBalanceSource,
         });
 
       if (balanceError) {
@@ -457,15 +533,16 @@ const TradingChart = () => {
       }
 
       if (!balanceDeducted) {
+        const balanceLabel = BALANCE_OPTIONS.find(b => b.value === selectedBalanceSource)?.label || selectedBalanceSource;
         toast({
           title: "Insufficient Balance",
-          description: "Not enough balance to place this trade",
+          description: `Not enough balance in ${balanceLabel} to place this trade`,
           variant: "destructive",
         });
         return;
       }
 
-      // THEN: Create the trade after balance is deducted
+      // Create the trade after balance is deducted
       const { error } = await supabase
         .from('trades')
         .insert({
@@ -502,9 +579,10 @@ const TradingChart = () => {
         });
       }
 
+      const balanceLabel = BALANCE_OPTIONS.find(b => b.value === selectedBalanceSource)?.label || selectedBalanceSource;
       toast({
         title: "Trade Started",
-        description: `${type.toUpperCase()} order placed for ${assetData.symbol} with ${selectedSignalData.signal_name} signal`,
+        description: `${type.toUpperCase()} order placed for ${assetData.symbol} using ${balanceLabel}`,
       });
 
       // Refresh trades data
@@ -536,6 +614,14 @@ const TradingChart = () => {
       console.error('Error:', error);
     }
   };
+
+  // Get selected balance amount for display
+  const getSelectedBalanceAmount = () => {
+    return userBalances[selectedBalanceSource as keyof UserBalances] || 0;
+  };
+
+  // Check if trade amount is valid
+  const isTradeAmountValid = tradeAmount > 0 && tradeAmount <= getSelectedBalanceAmount();
 
   if (loading) {
     return (
@@ -740,7 +826,7 @@ const TradingChart = () => {
               </TabsContent>
             </Tabs>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="text-sm font-medium mb-2 block text-foreground">Select Signal</label>
                 <Select value={selectedSignal} onValueChange={setSelectedSignal}>
@@ -757,6 +843,36 @@ const TradingChart = () => {
                 </Select>
               </div>
               <div>
+                <label className="text-sm font-medium mb-2 block text-foreground">
+                  <Wallet className="inline h-4 w-4 mr-1" />
+                  Deduct From
+                </label>
+                <Select value={selectedBalanceSource} onValueChange={setSelectedBalanceSource}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select balance source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BALANCE_OPTIONS.map((option) => {
+                      const balance = userBalances[option.key as keyof UserBalances] || 0;
+                      return (
+                        <SelectItem key={option.value} value={option.value}>
+                          <div className="flex justify-between items-center w-full gap-4">
+                            <span>{option.label}</span>
+                            <span className={`text-xs ${balance > 0 ? 'text-crypto-green' : 'text-muted-foreground'}`}>
+                              ${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <p className={`text-xs mt-1 ${isTradeAmountValid ? 'text-muted-foreground' : 'text-destructive'}`}>
+                  Available: ${getSelectedBalanceAmount().toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  {!isTradeAmountValid && tradeAmount > 0 && ' (Insufficient)'}
+                </p>
+              </div>
+              <div>
                 <label className="text-sm font-medium mb-2 block text-foreground">Trade Amount</label>
                 <div className="flex items-center space-x-2">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -764,9 +880,10 @@ const TradingChart = () => {
                     type="number"
                     value={tradeAmount}
                     onChange={(e) => setTradeAmount(Number(e.target.value))}
-                    className="flex-1 px-3 py-2 bg-background border border-border rounded-md text-foreground"
+                    className={`flex-1 px-3 py-2 bg-background border rounded-md text-foreground ${
+                      !isTradeAmountValid && tradeAmount > 0 ? 'border-destructive' : 'border-border'
+                    }`}
                     min="1"
-                    max="10000"
                   />
                 </div>
               </div>
@@ -775,7 +892,7 @@ const TradingChart = () => {
             <div className="flex space-x-4">
               <Button
                 onClick={() => handleTrade('buy')}
-                disabled={!selectedSignal || !selectedAsset}
+                disabled={!selectedSignal || !selectedAsset || !isTradeAmountValid}
                 className="flex-1 bg-crypto-green hover:bg-crypto-green/90"
               >
                 <TrendingUp className="mr-2 h-4 w-4" />
@@ -783,7 +900,7 @@ const TradingChart = () => {
               </Button>
               <Button
                 onClick={() => handleTrade('sell')}
-                disabled={!selectedSignal || !selectedAsset}
+                disabled={!selectedSignal || !selectedAsset || !isTradeAmountValid}
                 variant="outline"
                 className="flex-1 border-destructive text-destructive hover:bg-destructive hover:text-background"
               >
