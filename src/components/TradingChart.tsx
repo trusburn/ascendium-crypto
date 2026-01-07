@@ -6,8 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { useTwelveData, CandleData } from '@/hooks/useTwelveData';
-import { TrendingUp, TrendingDown, Activity, DollarSign, Wallet, RefreshCw, StopCircle, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
+import { useMarketData, CandleData } from '@/hooks/useMarketData';
+import { TrendingUp, TrendingDown, Activity, DollarSign, Wallet, RefreshCw, StopCircle, AlertTriangle, Globe, Cpu } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 // Trading Pairs Configuration
@@ -131,8 +131,8 @@ const TradingChart = () => {
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<any>(null);
   
-  // Twelve Data hook for GENERAL mode
-  const { fetchCandleData, fetchCurrentPrice, calculateProfit, loading: twelveDataLoading } = useTwelveData();
+  // Free market data hook (CoinGecko + simulation)
+  const { fetchCandleData, fetchCurrentPrice, calculateProfit, getDataSource, loading: marketDataLoading } = useMarketData();
   
   // Market selection state
   const [marketType, setMarketType] = useState<'crypto' | 'forex'>('crypto');
@@ -257,22 +257,12 @@ const TradingChart = () => {
         let chartData: CandleData[] = [];
         const basePrice = basePrices[selectedPair] || 100;
 
-        // GENERAL MODE: Use Twelve Data real market feed
+        // GENERAL MODE: Use free market data (CoinGecko for crypto, simulation for forex)
         if (tradingEngine === 'general') {
-          try {
-            chartData = await fetchCandleData(selectedPair, timeframe, marketType);
-            
-            if (chartData.length > 0) {
-              setDataSource('live');
-              setLastPriceUpdate(new Date());
-            } else {
-              throw new Error('No candle data received');
-            }
-          } catch (apiError) {
-            console.warn('Twelve Data API failed, using fallback:', apiError);
-            chartData = generateFallbackData(basePrice, tradingEngine);
-            setDataSource('fallback');
-          }
+          chartData = await fetchCandleData(selectedPair, timeframe, marketType);
+          const source = getDataSource(selectedPair, marketType);
+          setDataSource(source === 'coingecko' ? 'live' : 'fallback');
+          setLastPriceUpdate(new Date());
         } else {
           // RISING MODE: Use simulated upward-biased data
           chartData = generateFallbackData(basePrice, tradingEngine);
@@ -339,7 +329,7 @@ const TradingChart = () => {
         
         for (const pair of uniquePairs) {
           if (!pair) continue;
-          const livePrice = await fetchCurrentPrice(pair);
+          const livePrice = await fetchCurrentPrice(pair, marketType);
           
           if (livePrice) {
             setLastPriceUpdate(new Date());
@@ -734,12 +724,12 @@ const TradingChart = () => {
               {tradingEngine === 'general' && (
                 <Badge 
                   variant="outline" 
-                  className={dataSource === 'live' ? 'border-cyan-500 text-cyan-500' : 'border-gray-500 text-gray-400'}
+                  className={dataSource === 'live' ? 'border-cyan-500 text-cyan-500' : 'border-violet-500 text-violet-400'}
                 >
                   {dataSource === 'live' ? (
-                    <><Wifi className="h-3 w-3 mr-1" /> Twelve Data</>
+                    <><Globe className="h-3 w-3 mr-1" /> Live</>
                   ) : (
-                    <><WifiOff className="h-3 w-3 mr-1" /> Cached</>
+                    <><Cpu className="h-3 w-3 mr-1" /> Simulated</>
                   )}
                 </Badge>
               )}
