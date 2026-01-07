@@ -42,13 +42,17 @@ const Dashboard = () => {
   const [stoppingTrades, setStoppingTrades] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
-
     const fetchProfile = async () => {
+      if (!user) return;
+
       try {
-        // Sync trading profits to update net_balance with live P/L
         console.log('💰 Dashboard: Syncing trading profits...');
-        await supabase.rpc('sync_trading_profits');
+        const { error: syncError } = await supabase.rpc('sync_trading_profits');
+        if (syncError) {
+          console.error('❌ Dashboard sync error:', syncError);
+        } else {
+          console.log('✅ Dashboard sync successful');
+        }
 
         const { data, error } = await supabase
           .from('profiles')
@@ -58,6 +62,11 @@ const Dashboard = () => {
 
         if (error) {
           console.error('Error fetching profile:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load profile data",
+            variant: "destructive",
+          });
           return;
         }
 
@@ -79,63 +88,8 @@ const Dashboard = () => {
     };
 
     fetchProfile();
-
-    // Subscribe to real-time profile changes for live balance updates
-    const profileChannel = supabase
-      .channel(`dashboard-profile-${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${user.id}`
-        },
-        (payload) => {
-          const newData = payload.new as any;
-          console.log('📊 Real-time profile update:', newData);
-          setProfile({
-            net_balance: Number(newData?.net_balance || 0),
-            total_invested: Number(newData?.total_invested || 0),
-            interest_earned: Number(newData?.interest_earned || 0),
-            commissions: Number(newData?.commissions || 0),
-          });
-        }
-      )
-      .subscribe();
-
-    // Subscribe to trade changes to update active trade count
-    const tradesChannel = supabase
-      .channel(`dashboard-trades-${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'trades',
-          filter: `user_id=eq.${user.id}`
-        },
-        async () => {
-          const { data: tradesData } = await supabase
-            .from('trades')
-            .select('id, status')
-            .eq('user_id', user.id)
-            .eq('status', 'active');
-          setActiveTrades(tradesData || []);
-        }
-      )
-      .subscribe();
-
-    // Sync profits every 3 seconds to keep balance live
-    const interval = setInterval(async () => {
-      await supabase.rpc('sync_trading_profits');
-    }, 3000);
-
-    return () => {
-      supabase.removeChannel(profileChannel);
-      supabase.removeChannel(tradesChannel);
-      clearInterval(interval);
-    };
+    const interval = setInterval(fetchProfile, 30000);
+    return () => clearInterval(interval);
   }, [user]);
 
   const handleStopAllTrades = async () => {

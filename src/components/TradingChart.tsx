@@ -460,18 +460,7 @@ const TradingChart = () => {
   }, [user, tradingEngine, activeTrades.length]);
 
   const handleTrade = async (type: 'buy' | 'sell') => {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "Please log in to trade",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // For Rising engine, signal is required
-    // For General engine, signal must NOT be used
-    if (tradingEngine === 'rising' && !selectedSignal) {
+    if (!selectedSignal || !user) {
       toast({
         title: "Error",
         description: "Please select a signal first",
@@ -489,22 +478,8 @@ const TradingChart = () => {
       return;
     }
 
-    if (!selectedAsset) {
-      toast({
-        title: "Error",
-        description: "Please select an asset to trade",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Get signal data (only for Rising engine)
-    const selectedSignalData = tradingEngine === 'rising' 
-      ? purchasedSignals.find(s => s.id === selectedSignal)
-      : null;
-
-    // For General engine, use a default multiplier
-    const profitMultiplier = selectedSignalData?.profit_multiplier || 1.0;
+    const selectedSignalData = purchasedSignals.find(s => s.id === selectedSignal);
+    if (!selectedSignalData) return;
 
     // Get the selected balance amount
     const selectedBalanceAmount = userBalances[selectedBalanceSource as keyof UserBalances] || 0;
@@ -539,54 +514,69 @@ const TradingChart = () => {
 
       const entryPrice = assetData.current_price;
 
-      // Get current asset info for trading pair
-      const currentAssets = assetType === 'crypto' ? cryptoAssets : forexAssets;
-      const selectedAssetData = currentAssets.find(a => a.id === selectedAsset);
-      const tradingPair = selectedAssetData?.symbol || 'UNKNOWN';
-
-      // Use the validated trade function (handles engine validation + balance deduction)
-      // Pass empty string for null UUIDs to avoid type issues, backend handles conversion
-      const signalId = tradingEngine === 'rising' && selectedSignalData?.signal_id 
-        ? selectedSignalData.signal_id 
-        : '00000000-0000-0000-0000-000000000000';
-      const purchasedSignalId = tradingEngine === 'rising' && selectedSignal 
-        ? selectedSignal 
-        : '00000000-0000-0000-0000-000000000000';
-
-      const { data: tradeResult, error: tradeError } = await supabase
-        .rpc('start_trade_validated', {
+      // Deduct from the selected balance source directly
+      const { data: balanceDeducted, error: balanceError } = await supabase
+        .rpc('deduct_trade_from_balance', {
           p_user_id: user.id,
-          p_signal_id: signalId,
-          p_purchased_signal_id: purchasedSignalId,
-          p_trade_type: type,
-          p_initial_amount: tradeAmount,
-          p_profit_multiplier: profitMultiplier,
-          p_asset_id: selectedAsset,
-          p_entry_price: entryPrice,
+          p_amount: tradeAmount,
           p_balance_source: selectedBalanceSource,
-          p_trading_pair: tradingPair,
-          p_market_type: assetType,
         });
 
-      if (tradeError) {
-        console.error('Error starting trade:', tradeError);
+      if (balanceError) {
+        console.error('Error deducting balance:', balanceError);
         toast({
           title: "Error",
-          description: "Failed to start trade",
+          description: "Failed to process trade",
           variant: "destructive",
         });
         return;
       }
 
-      // Check if the backend rejected the trade
-      const result = tradeResult as { success?: boolean; error?: string; trade_id?: string };
-      if (!result?.success) {
+      if (!balanceDeducted) {
+        const balanceLabel = BALANCE_OPTIONS.find(b => b.value === selectedBalanceSource)?.label || selectedBalanceSource;
         toast({
-          title: "Trade Rejected",
-          description: result?.error || "Unable to process trade",
+          title: "Insufficient Balance",
+          description: `Not enough balance in ${balanceLabel} to place this trade`,
           variant: "destructive",
         });
         return;
+      }
+
+      // Create the trade after balance is deducted
+      const { error } = await supabase
+        .from('trades')
+        .insert({
+          user_id: user.id,
+          signal_id: selectedSignalData.signal_id,
+          purchased_signal_id: selectedSignal,
+          trade_type: type,
+          initial_amount: tradeAmount,
+          profit_multiplier: selectedSignalData.profit_multiplier,
+          asset_id: selectedAsset,
+          entry_price: entryPrice,
+          current_price: entryPrice,
+        });
+
+      if (error) {
+        console.error('Error creating trade:', error);
+        toast({
+          title: "Error",
+          description: "Failed to create trade",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Sync trading profits to update interest_earned and net_balance with profits
+      const { error: syncError } = await supabase.rpc('sync_trading_profits');
+      
+      if (syncError) {
+        console.error('Error syncing trading profits:', syncError);
+        toast({
+          title: "Sync Warning",
+          description: "Trade completed but balance sync failed",
+          variant: "destructive",
+        });
       }
 
       const balanceLabel = BALANCE_OPTIONS.find(b => b.value === selectedBalanceSource)?.label || selectedBalanceSource;
@@ -604,16 +594,17 @@ const TradingChart = () => {
 
       // Get signal names for trades
       if (tradesData) {
-        const signalIds = tradesData.map(t => t.signal_id).filter(Boolean);
-        const { data: signalsData } = signalIds.length > 0 
-          ? await supabase.from('signals').select('id, name').in('id', signalIds)
-          : { data: [] };
+        const signalIds = tradesData.map(t => t.signal_id);
+        const { data: signalsData } = await supabase
+          .from('signals')
+          .select('id, name')
+          .in('id', signalIds);
 
         const mergedTrades = tradesData.map(trade => {
           const signal = signalsData?.find(s => s.id === trade.signal_id);
           return {
             ...trade,
-            signal_name: signal?.name || (tradingEngine === 'general' ? 'Market Trade' : 'Unknown Signal'),
+            signal_name: signal?.name || 'Unknown Signal',
           };
         });
 
@@ -835,25 +826,22 @@ const TradingChart = () => {
               </TabsContent>
             </Tabs>
 
-            <div className={`grid grid-cols-1 gap-4 ${tradingEngine === 'rising' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
-              {/* Signal selector - ONLY for Rising engine users */}
-              {tradingEngine === 'rising' && (
-                <div>
-                  <label className="text-sm font-medium mb-2 block text-foreground">Select Signal</label>
-                  <Select value={selectedSignal} onValueChange={setSelectedSignal}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose your purchased signal" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {purchasedSignals.map((signal) => (
-                        <SelectItem key={signal.id} value={signal.id}>
-                          {signal.signal_name} (×{signal.profit_multiplier})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block text-foreground">Select Signal</label>
+                <Select value={selectedSignal} onValueChange={setSelectedSignal}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose your purchased signal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {purchasedSignals.map((signal) => (
+                      <SelectItem key={signal.id} value={signal.id}>
+                        {signal.signal_name} (×{signal.profit_multiplier})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <label className="text-sm font-medium mb-2 block text-foreground">
                   <Wallet className="inline h-4 w-4 mr-1" />
@@ -901,17 +889,10 @@ const TradingChart = () => {
               </div>
             </div>
 
-            {/* General engine info banner */}
-            {tradingEngine === 'general' && (
-              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-sm text-amber-200">
-                <strong>Market Mode:</strong> Trades follow real market conditions. Profits and losses are possible based on market fluctuations.
-              </div>
-            )}
-
             <div className="flex space-x-4">
               <Button
                 onClick={() => handleTrade('buy')}
-                disabled={(tradingEngine === 'rising' && !selectedSignal) || !selectedAsset || !isTradeAmountValid}
+                disabled={!selectedSignal || !selectedAsset || !isTradeAmountValid}
                 className="flex-1 bg-crypto-green hover:bg-crypto-green/90"
               >
                 <TrendingUp className="mr-2 h-4 w-4" />
@@ -919,7 +900,7 @@ const TradingChart = () => {
               </Button>
               <Button
                 onClick={() => handleTrade('sell')}
-                disabled={(tradingEngine === 'rising' && !selectedSignal) || !selectedAsset || !isTradeAmountValid}
+                disabled={!selectedSignal || !selectedAsset || !isTradeAmountValid}
                 variant="outline"
                 className="flex-1 border-destructive text-destructive hover:bg-destructive hover:text-background"
               >
@@ -972,8 +953,7 @@ const TradingChart = () => {
         </Card>
       )}
 
-      {/* Only show "No Signals" message for Rising engine users */}
-      {tradingEngine === 'rising' && purchasedSignals.length === 0 && (
+      {purchasedSignals.length === 0 && (
         <Card className="bg-muted/50 border-border">
           <CardContent className="text-center py-8">
             <Activity className="mx-auto h-12 w-12 text-foreground/50 mb-4" />
