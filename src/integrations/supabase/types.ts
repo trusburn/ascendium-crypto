@@ -315,8 +315,8 @@ export type Database = {
           last_updated: string
           price_change_percent: number | null
           profit_multiplier: number
-          purchased_signal_id: string
-          signal_id: string
+          purchased_signal_id: string | null
+          signal_id: string | null
           started_at: string
           status: string
           trade_type: string
@@ -332,8 +332,8 @@ export type Database = {
           last_updated?: string
           price_change_percent?: number | null
           profit_multiplier?: number
-          purchased_signal_id: string
-          signal_id: string
+          purchased_signal_id?: string | null
+          signal_id?: string | null
           started_at?: string
           status?: string
           trade_type: string
@@ -349,8 +349,8 @@ export type Database = {
           last_updated?: string
           price_change_percent?: number | null
           profit_multiplier?: number
-          purchased_signal_id?: string
-          signal_id?: string
+          purchased_signal_id?: string | null
+          signal_id?: string | null
           started_at?: string
           status?: string
           trade_type?: string
@@ -526,6 +526,20 @@ export type Database = {
         Returns: Json
       }
       recalculate_net_balance: { Args: { p_user_id: string }; Returns: number }
+      start_trade_validated: {
+        Args: {
+          p_asset_id: string
+          p_balance_source: string
+          p_entry_price: number
+          p_initial_amount: number
+          p_profit_multiplier: number
+          p_purchased_signal_id: string
+          p_signal_id: string
+          p_trade_type: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       stop_all_user_trades: { Args: { p_user_id: string }; Returns: Json }
       swap_balances: {
         Args: {
