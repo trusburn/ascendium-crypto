@@ -15,6 +15,7 @@ import DashboardDeposit from "./pages/DashboardDeposit";
 import DashboardWithdrawal from "./pages/DashboardWithdrawal";
 import DashboardSignals from "./pages/DashboardSignals";
 import DashboardWallet from "./pages/DashboardWallet";
+import DashboardSwap from "./pages/DashboardSwap";
 import DashboardTutorial from "./pages/DashboardTutorial";
 import DashboardProfile from "./pages/DashboardProfile";
 import DashboardSettings from "./pages/DashboardSettings";
@@ -57,6 +58,7 @@ const App = () => (
           <Route path="/dashboard/withdrawal" element={<ProtectedRoute><DashboardWithdrawal /></ProtectedRoute>} />
           <Route path="/dashboard/signals" element={<ProtectedRoute><DashboardSignals /></ProtectedRoute>} />
           <Route path="/dashboard/wallet" element={<ProtectedRoute><DashboardWallet /></ProtectedRoute>} />
+          <Route path="/dashboard/swap" element={<ProtectedRoute><DashboardSwap /></ProtectedRoute>} />
           <Route path="/dashboard/tutorial" element={<ProtectedRoute><DashboardTutorial /></ProtectedRoute>} />
           <Route path="/dashboard/profile" element={<ProtectedRoute><DashboardProfile /></ProtectedRoute>} />
           <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />

@@ -9,11 +9,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { useFrozenStatus } from '@/hooks/useFrozenStatus';
 import { useAdminSettings } from '@/hooks/useAdminSettings';
 import { supabase } from '@/integrations/supabase/client';
-import { ArrowDownLeft, AlertTriangle, Wallet, TrendingUp, Users, DollarSign } from 'lucide-react';
+import { ArrowDownLeft, AlertTriangle, Bitcoin, CircleDollarSign, DollarSign, TrendingUp, Users } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface UserBalances {
-  net_balance: number;
+  btc_balance: number;
+  eth_balance: number;
+  usdt_balance: number;
   interest_earned: number;
   commissions: number;
 }
@@ -25,10 +27,12 @@ const DashboardWithdrawal = () => {
   const [amount, setAmount] = useState('');
   const [cryptoType, setCryptoType] = useState('bitcoin');
   const [walletAddress, setWalletAddress] = useState('');
-  const [withdrawalSource, setWithdrawalSource] = useState('net_balance');
+  const [withdrawalSource, setWithdrawalSource] = useState('usdt_balance');
   const [loading, setLoading] = useState(false);
   const [balances, setBalances] = useState<UserBalances>({
-    net_balance: 0,
+    btc_balance: 0,
+    eth_balance: 0,
+    usdt_balance: 0,
     interest_earned: 0,
     commissions: 0,
   });
@@ -44,7 +48,9 @@ const DashboardWithdrawal = () => {
   ];
 
   const sourceOptions = [
-    { value: 'net_balance', label: 'Net Balance', icon: Wallet, color: 'text-crypto-blue' },
+    { value: 'btc_balance', label: 'Bitcoin Balance', icon: Bitcoin, color: 'text-orange-500' },
+    { value: 'eth_balance', label: 'Ethereum Balance', icon: CircleDollarSign, color: 'text-blue-500' },
+    { value: 'usdt_balance', label: 'USDT Balance', icon: DollarSign, color: 'text-green-500' },
     { value: 'interest_earned', label: 'Interest Earned', icon: TrendingUp, color: 'text-crypto-green' },
     { value: 'commissions', label: 'Commissions', icon: Users, color: 'text-crypto-gold' },
   ];
@@ -62,7 +68,7 @@ const DashboardWithdrawal = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('net_balance, interest_earned, commissions')
+        .select('btc_balance, eth_balance, usdt_balance, interest_earned, commissions')
         .eq('id', user.id)
         .single();
 
@@ -72,7 +78,9 @@ const DashboardWithdrawal = () => {
       }
 
       setBalances({
-        net_balance: data?.net_balance || 0,
+        btc_balance: data?.btc_balance || 0,
+        eth_balance: data?.eth_balance || 0,
+        usdt_balance: data?.usdt_balance || 0,
         interest_earned: data?.interest_earned || 0,
         commissions: data?.commissions || 0,
       });
@@ -166,7 +174,7 @@ const DashboardWithdrawal = () => {
       setAmount('');
       setCryptoType('bitcoin');
       setWalletAddress('');
-      setWithdrawalSource('net_balance');
+      setWithdrawalSource('usdt_balance');
       
       // Refresh balances
       fetchBalances();
@@ -195,7 +203,7 @@ const DashboardWithdrawal = () => {
         </div>
 
         {/* Balance Cards */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
           {sourceOptions.map((source) => {
             const Icon = source.icon;
             const balance = balances[source.value as keyof UserBalances];
@@ -218,7 +226,7 @@ const DashboardWithdrawal = () => {
                         <Icon className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">{source.label}</p>
+                        <p className="text-xs text-muted-foreground">{source.label}</p>
                         <p className="text-lg font-bold">
                           {loadingBalances ? '...' : formatCurrency(balance)}
                         </p>
@@ -390,7 +398,7 @@ const DashboardWithdrawal = () => {
               <div className="mt-4 p-4 bg-crypto-gold/10 border border-crypto-gold/30 rounded-lg">
                 <h4 className="font-medium text-crypto-gold mb-2">Withdrawal Sources:</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li><strong>Net Balance:</strong> Your main trading balance</li>
+                  <li><strong>BTC/ETH/USDT Balance:</strong> Your crypto holdings</li>
                   <li><strong>Interest Earned:</strong> Profits from trading</li>
                   <li><strong>Commissions:</strong> Referral earnings</li>
                 </ul>
