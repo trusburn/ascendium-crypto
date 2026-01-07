@@ -517,6 +517,7 @@ export type Database = {
         Args: { p_engine_type?: string; p_trade_id: string }
         Returns: number
       }
+      check_and_liquidate_trades: { Args: never; Returns: undefined }
       deduct_trade_balance: {
         Args: { p_amount: number; p_user_id: string }
         Returns: boolean
@@ -567,6 +568,10 @@ export type Database = {
             Returns: Json
           }
       stop_all_user_trades: { Args: { p_user_id: string }; Returns: Json }
+      stop_single_trade: {
+        Args: { p_trade_id: string; p_user_id: string }
+        Returns: Json
+      }
       swap_balances: {
         Args: {
           p_amount: number
