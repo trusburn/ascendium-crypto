@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { TrendingUp, TrendingDown, Activity, DollarSign, Wallet, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, DollarSign, Wallet, RefreshCw, StopCircle, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 // Trading Pairs Configuration
@@ -74,7 +74,38 @@ interface ActiveTrade {
   signal_name: string;
   trading_pair?: string;
   entry_price?: number;
+  status?: string;
 }
+
+// Generate fallback chart data when API fails
+const generateFallbackData = (basePrice: number, tradingEngine: string, numCandles = 100): any[] => {
+  const now = Math.floor(Date.now() / 1000);
+  const interval = 900; // 15 minutes
+  let lastClose = basePrice;
+  const data = [];
+  
+  for (let i = numCandles; i >= 0; i--) {
+    const time = (now - i * interval) as UTCTimestamp;
+    const volatility = basePrice * 0.002;
+    
+    let change;
+    if (tradingEngine === 'rising') {
+      change = (Math.random() * volatility * 0.5) + (volatility * 0.1);
+    } else {
+      change = (Math.random() - 0.5) * volatility * 2;
+    }
+    
+    const open = lastClose;
+    const close = open + change;
+    const high = Math.max(open, close) + Math.random() * volatility * 0.3;
+    const low = Math.min(open, close) - Math.random() * volatility * 0.3;
+    
+    data.push({ time, open, high, low, close });
+    lastClose = close;
+  }
+  
+  return data;
+};
 
 type TradingEngineType = 'rising' | 'general';
 
@@ -118,10 +149,12 @@ const TradingChart = () => {
   // UI state
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(true);
+  const [chartError, setChartError] = useState<string | null>(null);
   const [tradingEngine, setTradingEngine] = useState<TradingEngineType>('rising');
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [priceChange, setPriceChange] = useState<number>(0);
   const [priceChangePercent, setPriceChangePercent] = useState<number>(0);
+  const [stoppingTradeId, setStoppingTradeId] = useState<string | null>(null);
 
   // Get current pair data
   const getCurrentPairData = useCallback(() => {
@@ -194,63 +227,74 @@ const TradingChart = () => {
     const fetchChartData = async () => {
       if (!seriesRef.current) return;
       setChartLoading(true);
+      setChartError(null);
 
       try {
         const pairData = getCurrentPairData();
-        if (!pairData) return;
+        if (!pairData) {
+          throw new Error('Pair data not found');
+        }
+
+        let chartData: any[] = [];
 
         if (marketType === 'crypto') {
           const cryptoPair = pairData as typeof CRYPTO_PAIRS[0];
-          // Fetch from CoinGecko for crypto
           const days = timeframe === '1440' ? 30 : timeframe === '240' ? 7 : 1;
-          const response = await fetch(
-            `https://api.coingecko.com/api/v3/coins/${cryptoPair.apiId}/ohlc?vs_currency=usd&days=${days}`
-          );
           
-          if (!response.ok) throw new Error('Failed to fetch data');
-          
-          const data = await response.json();
-          
-          if (Array.isArray(data) && data.length > 0) {
-            // For rising engine, modify data to always trend up
-            let chartData;
-            if (tradingEngine === 'rising') {
-              let minClose = data[0][4];
-              chartData = data.map((item: number[], idx: number) => {
-                const baseClose = item[4];
-                const upwardBias = (idx / data.length) * (baseClose * 0.05);
-                const adjustedClose = Math.max(minClose, baseClose) + upwardBias;
-                minClose = adjustedClose;
-                return {
-                  time: Math.floor(item[0] / 1000) as UTCTimestamp,
-                  open: item[1] + upwardBias * 0.8,
-                  high: Math.max(item[2], adjustedClose) + upwardBias * 0.2,
-                  low: Math.max(item[3], item[1] * 0.99),
-                  close: adjustedClose,
-                };
-              });
-            } else {
-              chartData = data.map((item: number[]) => ({
-                time: Math.floor(item[0] / 1000) as UTCTimestamp,
-                open: item[1],
-                high: item[2],
-                low: item[3],
-                close: item[4],
-              }));
+          try {
+            const response = await fetch(
+              `https://api.coingecko.com/api/v3/coins/${cryptoPair.apiId}/ohlc?vs_currency=usd&days=${days}`,
+              { signal: AbortSignal.timeout(10000) }
+            );
+            
+            if (!response.ok) {
+              throw new Error(`API error: ${response.status}`);
             }
             
-            seriesRef.current.setData(chartData);
-            chartRef.current?.timeScale().fitContent();
+            const data = await response.json();
             
-            // Update current price
-            const lastPrice = chartData[chartData.length - 1].close;
-            const firstPrice = chartData[0].open;
-            setCurrentPrice(lastPrice);
-            setPriceChange(lastPrice - firstPrice);
-            setPriceChangePercent(((lastPrice - firstPrice) / firstPrice) * 100);
+            if (Array.isArray(data) && data.length > 0) {
+              if (tradingEngine === 'rising') {
+                let minClose = data[0][4];
+                chartData = data.map((item: number[], idx: number) => {
+                  const baseClose = item[4];
+                  const upwardBias = (idx / data.length) * (baseClose * 0.05);
+                  const adjustedClose = Math.max(minClose, baseClose) + upwardBias;
+                  minClose = adjustedClose;
+                  return {
+                    time: Math.floor(item[0] / 1000) as UTCTimestamp,
+                    open: item[1] + upwardBias * 0.8,
+                    high: Math.max(item[2], adjustedClose) + upwardBias * 0.2,
+                    low: Math.max(item[3], item[1] * 0.99),
+                    close: adjustedClose,
+                  };
+                });
+              } else {
+                chartData = data.map((item: number[]) => ({
+                  time: Math.floor(item[0] / 1000) as UTCTimestamp,
+                  open: item[1],
+                  high: item[2],
+                  low: item[3],
+                  close: item[4],
+                }));
+              }
+            } else {
+              throw new Error('No data received');
+            }
+          } catch (fetchError) {
+            console.warn('Crypto API failed, using fallback data:', fetchError);
+            // Use fallback data based on typical prices
+            const basePrices: Record<string, number> = {
+              'BTC/USDT': 42500, 'ETH/USDT': 2500, 'BNB/USDT': 310,
+              'SOL/USDT': 95, 'XRP/USDT': 0.55, 'ADA/USDT': 0.45,
+              'DOGE/USDT': 0.08, 'AVAX/USDT': 35, 'DOT/USDT': 7,
+              'LINK/USDT': 14, 'TRX/USDT': 0.11, 'LTC/USDT': 70,
+              'MATIC/USDT': 0.85, 'TON/USDT': 2.5, 'SHIB/USDT': 0.000009,
+            };
+            chartData = generateFallbackData(basePrices[selectedPair] || 100, tradingEngine);
           }
         } else {
-          // Generate simulated forex data
+          // Generate forex data
           const forexPair = pairData as typeof FOREX_PAIRS[0];
           const baseRate = forexPair.baseRate;
           const numCandles = 100;
@@ -258,7 +302,6 @@ const TradingChart = () => {
           const interval = parseInt(timeframe) * 60;
           
           let lastClose = baseRate;
-          const chartData = [];
           
           for (let i = numCandles; i >= 0; i--) {
             const time = (now - i * interval) as UTCTimestamp;
@@ -266,10 +309,8 @@ const TradingChart = () => {
             
             let change;
             if (tradingEngine === 'rising') {
-              // Rising engine: always trend up
               change = (Math.random() * volatility * 0.8);
             } else {
-              // General engine: realistic fluctuations
               change = (Math.random() - 0.5) * volatility * 2;
             }
             
@@ -281,7 +322,9 @@ const TradingChart = () => {
             chartData.push({ time, open, high, low, close });
             lastClose = close;
           }
-          
+        }
+
+        if (chartData.length > 0) {
           seriesRef.current.setData(chartData);
           chartRef.current?.timeScale().fitContent();
           
@@ -293,6 +336,13 @@ const TradingChart = () => {
         }
       } catch (error) {
         console.error('Error fetching chart data:', error);
+        setChartError('Chart data temporarily unavailable');
+        
+        // Still set a reasonable price for trading
+        const basePrices: Record<string, number> = {
+          'BTC/USDT': 42500, 'ETH/USDT': 2500, 'EUR/USD': 1.085,
+        };
+        setCurrentPrice(basePrices[selectedPair] || 100);
       } finally {
         setChartLoading(false);
       }
@@ -553,9 +603,72 @@ const TradingChart = () => {
     }
   };
 
+  // Handle stopping a single trade
+  const handleStopSingleTrade = async (tradeId: string) => {
+    if (!user) return;
+    
+    setStoppingTradeId(tradeId);
+    try {
+      const { data: result, error } = await supabase.rpc('stop_single_trade', {
+        p_user_id: user.id,
+        p_trade_id: tradeId,
+      });
+
+      if (error) throw error;
+
+      const resultData = result as { 
+        success: boolean; 
+        error?: string;
+        trade_id?: string;
+        initial_amount?: number;
+        profit?: number;
+        trading_pair?: string;
+        trade_type?: string;
+        is_profit?: boolean;
+      };
+
+      if (!resultData.success) {
+        toast({ 
+          title: "Error", 
+          description: resultData.error || "Failed to stop trade", 
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      // Create transaction record
+      await supabase.from('transactions').insert({
+        user_id: user.id,
+        type: resultData.is_profit ? 'trade_profit' : 'trade_loss',
+        amount: resultData.profit || 0,
+        description: `${resultData.trade_type?.toUpperCase()} ${resultData.trading_pair} | Invested: $${resultData.initial_amount?.toFixed(2)} | ${resultData.is_profit ? 'Profit' : 'Loss'}: $${Math.abs(resultData.profit || 0).toFixed(2)}`,
+      });
+
+      // Remove trade from local state
+      setActiveTrades(prev => prev.filter(t => t.id !== tradeId));
+
+      toast({
+        title: resultData.is_profit ? "Trade Closed - Profit!" : "Trade Closed - Loss",
+        description: `${resultData.trading_pair}: ${resultData.is_profit ? '+' : ''}$${(resultData.profit || 0).toFixed(2)}`,
+        variant: resultData.is_profit ? "default" : "destructive",
+      });
+
+    } catch (error: any) {
+      console.error('Stop trade error:', error);
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to stop trade", 
+        variant: "destructive" 
+      });
+    } finally {
+      setStoppingTradeId(null);
+    }
+  };
+
   const getSelectedBalanceAmount = () => userBalances[selectedBalanceSource as keyof UserBalances] || 0;
   const isTradeAmountValid = tradeAmount > 0 && tradeAmount <= getSelectedBalanceAmount();
   const totalProfit = activeTrades.reduce((sum, trade) => sum + (trade.current_profit || 0), 0);
+  const totalEquity = activeTrades.reduce((sum, trade) => sum + trade.initial_amount + (trade.current_profit || 0), 0);
 
   if (loading) {
     return (
@@ -758,9 +871,17 @@ const TradingChart = () => {
         <Card className="bg-muted/50 border-border">
           <CardHeader>
             <div className="flex justify-between items-center">
-              <CardTitle>Active Trades</CardTitle>
-              <div className={`text-lg font-bold ${totalProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                Total P/L: {totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(2)}
+              <CardTitle className="flex items-center gap-2">
+                Active Trades
+                <Badge variant="secondary">{activeTrades.length}</Badge>
+              </CardTitle>
+              <div className="text-right">
+                <p className={`text-lg font-bold ${totalProfit >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                  P/L: {totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(2)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Equity: ${totalEquity.toFixed(2)}
+                </p>
               </div>
             </div>
           </CardHeader>
@@ -770,26 +891,58 @@ const TradingChart = () => {
                 const equity = trade.initial_amount + (trade.current_profit || 0);
                 const profitPercent = ((trade.current_profit || 0) / trade.initial_amount) * 100;
                 const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
+                const isLiquidationRisk = equity <= trade.initial_amount * 0.2;
                 
                 return (
-                  <div key={trade.id} className="flex items-center justify-between p-4 bg-background rounded-lg border">
+                  <div 
+                    key={trade.id} 
+                    className={`flex items-center justify-between p-4 bg-background rounded-lg border ${
+                      isLiquidationRisk ? 'border-red-500/50 bg-red-500/5' : ''
+                    }`}
+                  >
                     <div className="flex items-center space-x-3">
                       <Badge className={trade.trade_type === 'buy' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-red-500/20 text-red-500'}>
                         {trade.trade_type.toUpperCase()}
                       </Badge>
                       <div>
-                        <p className="font-medium">{trade.trading_pair || trade.signal_name}</p>
+                        <p className="font-medium flex items-center gap-2">
+                          {trade.trading_pair || trade.signal_name}
+                          {isLiquidationRisk && (
+                            <span className="text-red-500 text-xs flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              Risk
+                            </span>
+                          )}
+                        </p>
                         <p className="text-sm text-muted-foreground">
                           Entry: ${trade.entry_price?.toFixed(2) || 'N/A'} • Invested: ${trade.initial_amount.toFixed(2)}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-lg">${equity.toFixed(2)}</p>
-                      <p className={`text-sm ${(trade.current_profit || 0) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                        {(trade.current_profit || 0) >= 0 ? '+' : ''}${(trade.current_profit || 0).toFixed(2)} ({profitPercent >= 0 ? '+' : ''}{profitPercent.toFixed(2)}%)
-                      </p>
-                      <p className="text-xs text-muted-foreground">{hoursElapsed.toFixed(1)}h ago</p>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="font-bold text-lg">${equity.toFixed(2)}</p>
+                        <p className={`text-sm ${(trade.current_profit || 0) >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                          {(trade.current_profit || 0) >= 0 ? '+' : ''}${(trade.current_profit || 0).toFixed(2)} ({profitPercent >= 0 ? '+' : ''}{profitPercent.toFixed(2)}%)
+                        </p>
+                        <p className="text-xs text-muted-foreground">{hoursElapsed.toFixed(1)}h ago</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleStopSingleTrade(trade.id)}
+                        disabled={stoppingTradeId === trade.id}
+                        className="border-red-500/50 text-red-500 hover:bg-red-500 hover:text-white"
+                      >
+                        {stoppingTradeId === trade.id ? (
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <StopCircle className="h-4 w-4 mr-1" />
+                            Stop
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
                 );
