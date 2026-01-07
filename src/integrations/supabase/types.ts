@@ -313,13 +313,16 @@ export type Database = {
           id: string
           initial_amount: number
           last_updated: string
+          market_type: string | null
           price_change_percent: number | null
           profit_multiplier: number
           purchased_signal_id: string | null
           signal_id: string | null
           started_at: string
           status: string
+          trade_direction: string | null
           trade_type: string
+          trading_pair: string | null
           user_id: string
         }
         Insert: {
@@ -330,13 +333,16 @@ export type Database = {
           id?: string
           initial_amount?: number
           last_updated?: string
+          market_type?: string | null
           price_change_percent?: number | null
           profit_multiplier?: number
           purchased_signal_id?: string | null
           signal_id?: string | null
           started_at?: string
           status?: string
+          trade_direction?: string | null
           trade_type: string
+          trading_pair?: string | null
           user_id: string
         }
         Update: {
@@ -347,13 +353,16 @@ export type Database = {
           id?: string
           initial_amount?: number
           last_updated?: string
+          market_type?: string | null
           price_change_percent?: number | null
           profit_multiplier?: number
           purchased_signal_id?: string | null
           signal_id?: string | null
           started_at?: string
           status?: string
+          trade_direction?: string | null
           trade_type?: string
+          trading_pair?: string | null
           user_id?: string
         }
         Relationships: [
@@ -508,6 +517,7 @@ export type Database = {
         Args: { p_engine_type?: string; p_trade_id: string }
         Returns: number
       }
+      check_and_liquidate_trades: { Args: never; Returns: undefined }
       deduct_trade_balance: {
         Args: { p_amount: number; p_user_id: string }
         Returns: boolean
@@ -526,21 +536,42 @@ export type Database = {
         Returns: Json
       }
       recalculate_net_balance: { Args: { p_user_id: string }; Returns: number }
-      start_trade_validated: {
-        Args: {
-          p_asset_id: string
-          p_balance_source: string
-          p_entry_price: number
-          p_initial_amount: number
-          p_profit_multiplier: number
-          p_purchased_signal_id: string
-          p_signal_id: string
-          p_trade_type: string
-          p_user_id: string
-        }
+      start_trade_validated:
+        | {
+            Args: {
+              p_asset_id: string
+              p_balance_source: string
+              p_entry_price: number
+              p_initial_amount: number
+              p_profit_multiplier: number
+              p_purchased_signal_id: string
+              p_signal_id: string
+              p_trade_type: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_asset_id: string
+              p_balance_source: string
+              p_entry_price: number
+              p_initial_amount: number
+              p_market_type?: string
+              p_profit_multiplier: number
+              p_purchased_signal_id: string
+              p_signal_id: string
+              p_trade_type: string
+              p_trading_pair?: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
+      stop_all_user_trades: { Args: { p_user_id: string }; Returns: Json }
+      stop_single_trade: {
+        Args: { p_trade_id: string; p_user_id: string }
         Returns: Json
       }
-      stop_all_user_trades: { Args: { p_user_id: string }; Returns: Json }
       swap_balances: {
         Args: {
           p_amount: number
