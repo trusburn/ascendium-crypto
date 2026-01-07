@@ -152,6 +152,7 @@ const TradingChart = () => {
   // UI state
   const [loading, setLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(true);
+  const [chartReady, setChartReady] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
   const [tradingEngine, setTradingEngine] = useState<TradingEngineType>('rising');
   const [currentPrice, setCurrentPrice] = useState<number>(0);
@@ -209,6 +210,7 @@ const TradingChart = () => {
 
     chartRef.current = chart;
     seriesRef.current = candlestickSeries;
+    setChartReady(true);
 
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
@@ -224,6 +226,7 @@ const TradingChart = () => {
         chartRef.current = null;
         seriesRef.current = null;
       }
+      setChartReady(false);
     };
   }, []);
 
@@ -243,8 +246,16 @@ const TradingChart = () => {
 
   // Fetch chart data when pair or timeframe changes
   useEffect(() => {
+    if (!chartReady) return;
+
+    let cancelled = false;
+
     const fetchChartData = async () => {
-      if (!seriesRef.current) return;
+      if (!seriesRef.current) {
+        setChartLoading(false);
+        return;
+      }
+
       setChartLoading(true);
       setChartError(null);
 
@@ -269,18 +280,20 @@ const TradingChart = () => {
           setDataSource('fallback');
         }
 
+        if (cancelled) return;
+
         if (chartData.length > 0) {
-          const formattedData = chartData.map(c => ({
+          const formattedData = chartData.map((c) => ({
             time: c.time as UTCTimestamp,
             open: c.open,
             high: c.high,
             low: c.low,
             close: c.close,
           }));
-          
+
           seriesRef.current.setData(formattedData);
           chartRef.current?.timeScale().fitContent();
-          
+
           const lastPrice = chartData[chartData.length - 1].close;
           const firstPrice = chartData[0].open;
           setCurrentPrice(lastPrice);
@@ -291,23 +304,25 @@ const TradingChart = () => {
         console.error('Error fetching chart data:', error);
         setChartError('Chart data temporarily unavailable');
         setDataSource('fallback');
-        
+
         // Use fallback and still set price
         const basePrice = basePrices[selectedPair] || 100;
         const fallbackData = generateFallbackData(basePrice, tradingEngine);
-        
+
         if (seriesRef.current && fallbackData.length > 0) {
-          seriesRef.current.setData(fallbackData.map(c => ({
-            time: c.time as UTCTimestamp,
-            open: c.open,
-            high: c.high,
-            low: c.low,
-            close: c.close,
-          })));
+          seriesRef.current.setData(
+            fallbackData.map((c) => ({
+              time: c.time as UTCTimestamp,
+              open: c.open,
+              high: c.high,
+              low: c.low,
+              close: c.close,
+            }))
+          );
           setCurrentPrice(fallbackData[fallbackData.length - 1].close);
         }
       } finally {
-        setChartLoading(false);
+        if (!cancelled) setChartLoading(false);
       }
     };
 
@@ -315,8 +330,11 @@ const TradingChart = () => {
     // Poll more frequently for GENERAL mode (real market), less for RISING
     const pollInterval = tradingEngine === 'general' ? 15000 : 30000;
     const interval = setInterval(fetchChartData, pollInterval);
-    return () => clearInterval(interval);
-  }, [selectedPair, timeframe, marketType, tradingEngine, getCurrentPairData, fetchCandleData]);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [chartReady, selectedPair, timeframe, marketType, tradingEngine, getCurrentPairData, fetchCandleData, getDataSource]);
 
   // Live price updates for active trades in GENERAL mode
   useEffect(() => {
