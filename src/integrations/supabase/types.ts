@@ -531,10 +531,16 @@ export type Database = {
         Returns: Database["public"]["Enums"]["user_role"]
       }
       is_admin: { Args: { check_user_id?: string }; Returns: boolean }
-      purchase_signal: {
-        Args: { p_signal_id: string; p_user_id: string }
-        Returns: Json
-      }
+      purchase_signal:
+        | { Args: { p_signal_id: string; p_user_id: string }; Returns: Json }
+        | {
+            Args: {
+              p_balance_source?: string
+              p_signal_id: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
       recalculate_net_balance: { Args: { p_user_id: string }; Returns: number }
       start_trade_validated:
         | {
