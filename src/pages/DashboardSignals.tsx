@@ -3,10 +3,12 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useFrozenStatus } from '@/hooks/useFrozenStatus';
-import { Signal, TrendingUp, Zap } from 'lucide-react';
+import { Signal, TrendingUp, Zap, Wallet } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface SignalData {
@@ -17,12 +19,45 @@ interface SignalData {
   profit_multiplier: number;
 }
 
+interface UserBalances {
+  btc_balance: number;
+  eth_balance: number;
+  usdt_balance: number;
+  interest_earned: number;
+  commissions: number;
+  base_balance: number;
+}
+
+const BALANCE_OPTIONS = [
+  { value: 'usdt_balance', label: 'Tether (USDT)', key: 'usdt_balance' as keyof UserBalances },
+  { value: 'btc_balance', label: 'Bitcoin (BTC)', key: 'btc_balance' as keyof UserBalances },
+  { value: 'eth_balance', label: 'Ethereum (ETH)', key: 'eth_balance' as keyof UserBalances },
+  { value: 'interest_earned', label: 'Interest Earned', key: 'interest_earned' as keyof UserBalances },
+  { value: 'commissions', label: 'Commissions', key: 'commissions' as keyof UserBalances },
+  { value: 'base_balance', label: 'USD Balance', key: 'base_balance' as keyof UserBalances },
+];
+
 const DashboardSignals = () => {
   const { user } = useAuth();
   const { isFrozen } = useFrozenStatus();
   const [signals, setSignals] = useState<SignalData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userBalances, setUserBalances] = useState<UserBalances>({
+    btc_balance: 0,
+    eth_balance: 0,
+    usdt_balance: 0,
+    interest_earned: 0,
+    commissions: 0,
+    base_balance: 0,
+  });
+  
+  // Purchase dialog state
+  const [purchaseDialogOpen, setPurchaseDialogOpen] = useState(false);
+  const [selectedSignal, setSelectedSignal] = useState<SignalData | null>(null);
+  const [selectedBalanceSource, setSelectedBalanceSource] = useState<string>('usdt_balance');
+  const [purchasing, setPurchasing] = useState(false);
 
+  // Fetch signals
   useEffect(() => {
     const fetchSignals = async () => {
       try {
@@ -52,8 +87,59 @@ const DashboardSignals = () => {
     fetchSignals();
   }, []);
 
-  const handlePurchaseSignal = async (signalId: string, signalName: string) => {
-    if (!user) return;
+  // Fetch user balances
+  useEffect(() => {
+    const fetchBalances = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('btc_balance, eth_balance, usdt_balance, interest_earned, commissions, base_balance')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+
+        setUserBalances({
+          btc_balance: data?.btc_balance || 0,
+          eth_balance: data?.eth_balance || 0,
+          usdt_balance: data?.usdt_balance || 0,
+          interest_earned: data?.interest_earned || 0,
+          commissions: data?.commissions || 0,
+          base_balance: data?.base_balance || 0,
+        });
+      } catch (error) {
+        console.error('Error fetching balances:', error);
+      }
+    };
+
+    fetchBalances();
+
+    // Subscribe to balance changes
+    const channel = supabase
+      .channel('signal-purchase-balances')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'profiles',
+        filter: `id=eq.${user?.id}`
+      }, fetchBalances)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
+  const openPurchaseDialog = (signal: SignalData) => {
+    setSelectedSignal(signal);
+    setSelectedBalanceSource('usdt_balance');
+    setPurchaseDialogOpen(true);
+  };
+
+  const handlePurchaseSignal = async () => {
+    if (!user || !selectedSignal) return;
 
     if (isFrozen) {
       toast({
@@ -64,11 +150,25 @@ const DashboardSignals = () => {
       return;
     }
 
+    // Validate balance
+    const selectedBalance = userBalances[selectedBalanceSource as keyof UserBalances] || 0;
+    if (selectedBalance < selectedSignal.price) {
+      toast({
+        title: "Insufficient Balance",
+        description: `You need $${selectedSignal.price.toFixed(2)} but only have $${selectedBalance.toFixed(2)} in ${BALANCE_OPTIONS.find(b => b.value === selectedBalanceSource)?.label}`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPurchasing(true);
+
     try {
-      // Call the secure RPC function to handle the purchase
+      // Call the secure RPC function with balance source
       const { data, error } = await supabase.rpc('purchase_signal', {
         p_user_id: user.id,
-        p_signal_id: signalId
+        p_signal_id: selectedSignal.id,
+        p_balance_source: selectedBalanceSource
       });
 
       if (error) {
@@ -88,8 +188,11 @@ const DashboardSignals = () => {
 
       toast({
         title: "Signal Purchased!",
-        description: `Successfully purchased ${result.signal_name || signalName} signal for $${result.amount_paid}. You can now use it for trading.`,
+        description: `Successfully purchased ${result.signal_name || selectedSignal.name} signal for $${result.amount_paid}`,
       });
+
+      setPurchaseDialogOpen(false);
+      setSelectedSignal(null);
     } catch (error: any) {
       console.error('Error purchasing signal:', error);
       toast({
@@ -97,6 +200,8 @@ const DashboardSignals = () => {
         description: error.message || "Failed to purchase signal. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setPurchasing(false);
     }
   };
 
@@ -108,6 +213,10 @@ const DashboardSignals = () => {
     if (multiplier <= 4.0) return { level: 5, color: 'destructive' };
     if (multiplier <= 5.0) return { level: 6, color: 'crypto-electric' };
     return { level: 7, color: 'gradient-primary' };
+  };
+
+  const getSelectedBalanceAmount = () => {
+    return userBalances[selectedBalanceSource as keyof UserBalances] || 0;
   };
 
   if (loading) {
@@ -172,7 +281,7 @@ const DashboardSignals = () => {
                   </div>
 
                   <Button
-                    onClick={() => handlePurchaseSignal(signal.id, signal.name)}
+                    onClick={() => openPurchaseDialog(signal)}
                     className="w-full bg-crypto-gradient hover:opacity-90"
                   >
                     <TrendingUp className="mr-2 h-4 w-4" />
@@ -221,6 +330,92 @@ const DashboardSignals = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Purchase Dialog with Balance Selector */}
+      <Dialog open={purchaseDialogOpen} onOpenChange={setPurchaseDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Signal className="h-5 w-5" />
+              Purchase {selectedSignal?.name} Signal
+            </DialogTitle>
+            <DialogDescription>
+              Select which balance to use for this purchase
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedSignal && (
+            <div className="space-y-4">
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-muted-foreground">Signal Price:</span>
+                  <span className="text-xl font-bold text-crypto-gold">${selectedSignal.price}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Profit Multiplier:</span>
+                  <span className="font-semibold text-crypto-green">{selectedSignal.profit_multiplier}x</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Wallet className="h-4 w-4" />
+                  Pay from:
+                </label>
+                <Select value={selectedBalanceSource} onValueChange={setSelectedBalanceSource}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select balance" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BALANCE_OPTIONS.map((option) => {
+                      const balance = userBalances[option.key];
+                      const hasEnough = balance >= (selectedSignal?.price || 0);
+                      return (
+                        <SelectItem 
+                          key={option.value} 
+                          value={option.value}
+                          disabled={!hasEnough}
+                        >
+                          <div className="flex justify-between items-center w-full gap-4">
+                            <span>{option.label}</span>
+                            <span className={hasEnough ? 'text-crypto-green' : 'text-muted-foreground'}>
+                              ${balance.toFixed(2)}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Available: ${getSelectedBalanceAmount().toFixed(2)}
+                </p>
+              </div>
+
+              {getSelectedBalanceAmount() < selectedSignal.price && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <p className="text-sm text-destructive">
+                    Insufficient balance. You need ${(selectedSignal.price - getSelectedBalanceAmount()).toFixed(2)} more.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setPurchaseDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePurchaseSignal}
+              disabled={purchasing || getSelectedBalanceAmount() < (selectedSignal?.price || 0)}
+              className="bg-crypto-gradient hover:opacity-90"
+            >
+              {purchasing ? 'Processing...' : `Pay $${selectedSignal?.price || 0}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };
