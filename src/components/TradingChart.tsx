@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { TrendingUp, TrendingDown, Activity, DollarSign, Bitcoin, DollarSign as Forex, Wallet } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, DollarSign, Bitcoin, DollarSign as Forex, Wallet, Square } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface PurchasedSignal {
@@ -947,13 +947,45 @@ const TradingChart = () => {
                       </p>
                     </div>
                     </div>
-                    <div className="text-right">
-                      <p className={`font-bold ${currentProfit >= 0 ? 'text-crypto-green' : 'text-destructive'}`}>
-                        {currentProfit >= 0 ? '+' : ''}${currentProfit.toFixed(2)}
-                      </p>
-                      <p className="text-sm text-foreground/70">
-                        {hoursElapsed.toFixed(1)}h ago
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className={`font-bold ${currentProfit >= 0 ? 'text-crypto-green' : 'text-destructive'}`}>
+                          {currentProfit >= 0 ? '+' : ''}${currentProfit.toFixed(2)}
+                        </p>
+                        <p className="text-sm text-foreground/70">
+                          {hoursElapsed.toFixed(1)}h ago
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={async () => {
+                          const { data: { user } } = await supabase.auth.getUser();
+                          if (!user) return;
+                          
+                          const { error } = await supabase.rpc('stop_single_trade', {
+                            p_trade_id: trade.id,
+                            p_user_id: user.id
+                          });
+                          
+                          if (error) {
+                            toast({
+                              title: "Error",
+                              description: "Failed to stop trade",
+                              variant: "destructive"
+                            });
+                          } else {
+                            toast({
+                              title: "Trade Stopped",
+                              description: `Trade closed with ${currentProfit >= 0 ? 'profit' : 'loss'} of $${Math.abs(currentProfit).toFixed(2)}`
+                            });
+                            setActiveTrades(prev => prev.filter(t => t.id !== trade.id));
+                          }
+                        }}
+                      >
+                        <Square className="h-3 w-3 mr-1" />
+                        Stop
+                      </Button>
                     </div>
                   </div>
                 );
