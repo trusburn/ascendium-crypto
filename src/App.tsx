@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import Index from "./pages/Index";
 import Testimonials from "./pages/Testimonials";
 import CryptoNews from "./pages/CryptoNews";
@@ -40,52 +41,54 @@ import { AdminLayout } from "./components/AdminLayout";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/testimonials" element={<Testimonials />} />
-          <Route path="/crypto-news" element={<CryptoNews />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/adminlog" element={<AdminLogin />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/dashboard/transactions" element={<ProtectedRoute><DashboardTransactions /></ProtectedRoute>} />
-          <Route path="/dashboard/deposit" element={<ProtectedRoute><DashboardDeposit /></ProtectedRoute>} />
-          <Route path="/dashboard/withdrawal" element={<ProtectedRoute><DashboardWithdrawal /></ProtectedRoute>} />
-          <Route path="/dashboard/signals" element={<ProtectedRoute><DashboardSignals /></ProtectedRoute>} />
-          <Route path="/dashboard/wallet" element={<ProtectedRoute><DashboardWallet /></ProtectedRoute>} />
-          <Route path="/dashboard/swap" element={<ProtectedRoute><DashboardSwap /></ProtectedRoute>} />
-          <Route path="/dashboard/tutorial" element={<ProtectedRoute><DashboardTutorial /></ProtectedRoute>} />
-          <Route path="/dashboard/profile" element={<ProtectedRoute><DashboardProfile /></ProtectedRoute>} />
-          <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
-          <Route path="/dashboard/trade-history" element={<ProtectedRoute><DashboardTradeHistory /></ProtectedRoute>} />
-          
-          {/* Legacy admin panel */}
-          <Route path="/admin-panel" element={<ProtectedRoute adminOnly><AdminPanel /></ProtectedRoute>} />
-          
-          {/* New admin routes with sidebar */}
-          <Route path="/admin" element={<ProtectedRoute adminOnly><AdminLayout><AdminOverview /></AdminLayout></ProtectedRoute>} />
-          <Route path="/admin/deposits" element={<ProtectedRoute adminOnly><AdminLayout><AdminDeposits /></AdminLayout></ProtectedRoute>} />
-          <Route path="/admin/withdrawals" element={<ProtectedRoute adminOnly><AdminLayout><AdminWithdrawals /></AdminLayout></ProtectedRoute>} />
-          <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminLayout><AdminUsers /></AdminLayout></ProtectedRoute>} />
-          <Route path="/admin/content" element={<ProtectedRoute adminOnly><AdminLayout><AdminContent /></AdminLayout></ProtectedRoute>} />
-          <Route path="/admin/contact" element={<ProtectedRoute adminOnly><AdminLayout><AdminContact /></AdminLayout></ProtectedRoute>} />
-          <Route path="/admin/email" element={<ProtectedRoute adminOnly><AdminLayout><AdminEmail /></AdminLayout></ProtectedRoute>} />
-          <Route path="/admin/wallets" element={<ProtectedRoute adminOnly><AdminLayout><AdminWallets /></AdminLayout></ProtectedRoute>} />
-          <Route path="/admin/crypto" element={<ProtectedRoute adminOnly><AdminLayout><AdminCrypto /></AdminLayout></ProtectedRoute>} />
-          <Route path="/admin/trading-engine" element={<ProtectedRoute adminOnly><AdminLayout><AdminTradingEngine /></AdminLayout></ProtectedRoute>} />
-          <Route path="/admin/management" element={<ProtectedRoute adminOnly><AdminLayout><AdminManagement /></AdminLayout></ProtectedRoute>} />
-          <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminLayout><AdminSettings /></AdminLayout></ProtectedRoute>} />
-          
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/testimonials" element={<Testimonials />} />
+            <Route path="/crypto-news" element={<CryptoNews />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/adminlog" element={<AdminLogin />} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/dashboard/transactions" element={<ProtectedRoute><DashboardTransactions /></ProtectedRoute>} />
+            <Route path="/dashboard/deposit" element={<ProtectedRoute><DashboardDeposit /></ProtectedRoute>} />
+            <Route path="/dashboard/withdrawal" element={<ProtectedRoute><DashboardWithdrawal /></ProtectedRoute>} />
+            <Route path="/dashboard/signals" element={<ProtectedRoute><DashboardSignals /></ProtectedRoute>} />
+            <Route path="/dashboard/wallet" element={<ProtectedRoute><DashboardWallet /></ProtectedRoute>} />
+            <Route path="/dashboard/swap" element={<ProtectedRoute><DashboardSwap /></ProtectedRoute>} />
+            <Route path="/dashboard/tutorial" element={<ProtectedRoute><DashboardTutorial /></ProtectedRoute>} />
+            <Route path="/dashboard/profile" element={<ProtectedRoute><DashboardProfile /></ProtectedRoute>} />
+            <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/trade-history" element={<ProtectedRoute><DashboardTradeHistory /></ProtectedRoute>} />
+            
+            {/* Legacy admin panel */}
+            <Route path="/admin-panel" element={<ProtectedRoute adminOnly><AdminPanel /></ProtectedRoute>} />
+            
+            {/* New admin routes with sidebar */}
+            <Route path="/admin" element={<ProtectedRoute adminOnly><AdminLayout><AdminOverview /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/deposits" element={<ProtectedRoute adminOnly><AdminLayout><AdminDeposits /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/withdrawals" element={<ProtectedRoute adminOnly><AdminLayout><AdminWithdrawals /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminLayout><AdminUsers /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/content" element={<ProtectedRoute adminOnly><AdminLayout><AdminContent /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/contact" element={<ProtectedRoute adminOnly><AdminLayout><AdminContact /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/email" element={<ProtectedRoute adminOnly><AdminLayout><AdminEmail /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/wallets" element={<ProtectedRoute adminOnly><AdminLayout><AdminWallets /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/crypto" element={<ProtectedRoute adminOnly><AdminLayout><AdminCrypto /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/trading-engine" element={<ProtectedRoute adminOnly><AdminLayout><AdminTradingEngine /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/management" element={<ProtectedRoute adminOnly><AdminLayout><AdminManagement /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminLayout><AdminSettings /></AdminLayout></ProtectedRoute>} />
+            
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;

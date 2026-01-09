@@ -1,13 +1,20 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Sun, Moon } from 'lucide-react';
 import { useAdminContent } from '@/hooks/useAdminContent';
+import { useTheme } from 'next-themes';
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const { content } = useAdminContent();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -75,6 +82,17 @@ export const Navigation = () => {
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center space-x-3">
+            {/* Theme Toggle */}
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="text-foreground hover:text-crypto-blue hover:bg-crypto-blue/10"
+              >
+                {mounted && (theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />)}
+              </Button>
+            </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <a href="/dashboard">
                 <Button variant="ghost" className="text-foreground hover:text-crypto-blue hover:bg-crypto-blue/10">
@@ -84,7 +102,7 @@ export const Navigation = () => {
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <a href="/auth">
-                <Button className="bg-crypto-gradient hover:opacity-90 text-background">
+                <Button className="bg-crypto-gradient hover:opacity-90 text-primary-foreground">
                   Get Started
                 </Button>
               </a>
@@ -129,13 +147,22 @@ export const Navigation = () => {
                   </motion.a>
                 ))}
                 <div className="flex flex-col gap-3 pt-4 border-t border-border mt-4">
+                  {/* Mobile Theme Toggle */}
+                  <Button
+                    variant="outline"
+                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                    className="w-full border-border text-foreground"
+                  >
+                    {mounted && (theme === 'dark' ? <Sun className="h-5 w-5 mr-2" /> : <Moon className="h-5 w-5 mr-2" />)}
+                    {mounted && (theme === 'dark' ? 'Light Mode' : 'Dark Mode')}
+                  </Button>
                   <a href="/dashboard">
-                    <Button variant="outline" className="w-full border-crypto-blue text-crypto-blue hover:bg-crypto-blue hover:text-background">
+                    <Button variant="outline" className="w-full border-crypto-blue text-crypto-blue hover:bg-crypto-blue hover:text-primary-foreground">
                       Dashboard
                     </Button>
                   </a>
                   <a href="/auth">
-                    <Button className="w-full bg-crypto-gradient hover:opacity-90 text-background">
+                    <Button className="w-full bg-crypto-gradient hover:opacity-90 text-primary-foreground">
                       Get Started
                     </Button>
                   </a>
