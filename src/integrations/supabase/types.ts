@@ -505,6 +505,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_adjust_user_balance: {
+        Args: {
+          p_action: string
+          p_admin_id: string
+          p_amount: number
+          p_balance_type: string
+          p_reason: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       approve_deposit: {
         Args: { p_admin_id: string; p_deposit_id: string }
         Returns: Json

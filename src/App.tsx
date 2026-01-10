@@ -34,6 +34,7 @@ import AdminEmail from './pages/admin/AdminEmail';
 import AdminWallets from './pages/admin/AdminWallets';
 import AdminCrypto from "./pages/admin/AdminCrypto";
 import AdminTradingEngine from "./pages/admin/AdminTradingEngine";
+import AdminBalanceAdjust from "./pages/admin/AdminBalanceAdjust";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminLayout } from "./components/AdminLayout";
@@ -74,6 +75,7 @@ const App = () => (
             <Route path="/admin/deposits" element={<ProtectedRoute adminOnly><AdminLayout><AdminDeposits /></AdminLayout></ProtectedRoute>} />
             <Route path="/admin/withdrawals" element={<ProtectedRoute adminOnly><AdminLayout><AdminWithdrawals /></AdminLayout></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute adminOnly><AdminLayout><AdminUsers /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/balance-adjust" element={<ProtectedRoute adminOnly><AdminLayout><AdminBalanceAdjust /></AdminLayout></ProtectedRoute>} />
             <Route path="/admin/content" element={<ProtectedRoute adminOnly><AdminLayout><AdminContent /></AdminLayout></ProtectedRoute>} />
             <Route path="/admin/contact" element={<ProtectedRoute adminOnly><AdminLayout><AdminContact /></AdminLayout></ProtectedRoute>} />
             <Route path="/admin/email" element={<ProtectedRoute adminOnly><AdminLayout><AdminEmail /></AdminLayout></ProtectedRoute>} />
