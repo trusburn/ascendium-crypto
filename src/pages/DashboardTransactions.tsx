@@ -118,11 +118,18 @@ const DashboardTransactions = () => {
     fetchTransactions();
   }, [user]);
 
+  // Check if transaction is admin-related (user-facing display)
+  const isAdminTransaction = (type: string) => {
+    return type === 'admin_credit' || type === 'admin_debit';
+  };
+
   const getTransactionIcon = (type: string) => {
     switch (type.toLowerCase()) {
       case 'deposit':
+      case 'admin_credit':
         return <ArrowUpRight className="h-4 w-4 text-crypto-green" />;
       case 'withdrawal':
+      case 'admin_debit':
         return <ArrowDownLeft className="h-4 w-4 text-destructive" />;
       case 'trade_closed':
       case 'trade_profit':
@@ -146,9 +153,37 @@ const DashboardTransactions = () => {
         return <Badge className="bg-crypto-green/20 text-crypto-green border-crypto-green">Trade Profit</Badge>;
       case 'trade_loss':
         return <Badge variant="destructive">Trade Loss</Badge>;
+      case 'admin_credit':
+      case 'admin_debit':
+        return <Badge className="bg-crypto-blue/20 text-crypto-blue border-crypto-blue">Site Funds</Badge>;
       default:
         return <Badge variant="secondary">{type}</Badge>;
     }
+  };
+
+  // Get user-friendly display title for transactions
+  const getDisplayTitle = (transaction: Transaction) => {
+    if (isAdminTransaction(transaction.type)) {
+      // Show "Site Funds" as the main title, description becomes subtitle
+      return 'Site Funds';
+    }
+    return transaction.description || transaction.type;
+  };
+
+  // Get subtitle for transactions (reason/description for admin transactions)
+  const getDisplaySubtitle = (transaction: Transaction) => {
+    if (isAdminTransaction(transaction.type) && transaction.description) {
+      return transaction.description;
+    }
+    return null;
+  };
+
+  // Override status for admin transactions to always show "Completed"
+  const getDisplayStatus = (transaction: Transaction) => {
+    if (isAdminTransaction(transaction.type)) {
+      return 'completed';
+    }
+    return transaction.status;
   };
 
   const getStatusBadge = (status?: string) => {
@@ -210,11 +245,14 @@ const DashboardTransactions = () => {
                       </div>
                       <div>
                         <div className="flex items-center space-x-2 flex-wrap">
-                          <h4 className="font-medium">{transaction.description || transaction.type}</h4>
+                          <h4 className="font-medium">{getDisplayTitle(transaction)}</h4>
                           {getTransactionBadge(transaction.type)}
-                          {getStatusBadge(transaction.status)}
+                          {getStatusBadge(getDisplayStatus(transaction))}
                         </div>
                         <div className="text-sm text-muted-foreground space-y-1">
+                          {getDisplaySubtitle(transaction) && (
+                            <p className="text-foreground/80">{getDisplaySubtitle(transaction)}</p>
+                          )}
                           <p>{new Date(transaction.created_at).toLocaleDateString()}</p>
                           {transaction.crypto_type && transaction.wallet_address && (
                             <p className="truncate max-w-xs">
@@ -226,16 +264,16 @@ const DashboardTransactions = () => {
                     </div>
                     <div className="text-right">
                       <div className={`font-bold ${
-                        transaction.type.toLowerCase() === 'deposit' || transaction.type.toLowerCase() === 'trade_profit'
+                        transaction.type.toLowerCase() === 'deposit' || transaction.type.toLowerCase() === 'trade_profit' || transaction.type === 'admin_credit'
                           ? 'text-crypto-green' 
-                          : transaction.type.toLowerCase() === 'withdrawal' || transaction.type.toLowerCase() === 'trade_loss'
+                          : transaction.type.toLowerCase() === 'withdrawal' || transaction.type.toLowerCase() === 'trade_loss' || transaction.type === 'admin_debit'
                           ? 'text-destructive'
                           : transaction.type.toLowerCase() === 'trade_closed'
                           ? (transaction.amount >= 0 ? 'text-crypto-green' : 'text-destructive')
                           : 'text-foreground'
                       }`}>
-                        {transaction.type.toLowerCase() === 'deposit' || transaction.type.toLowerCase() === 'trade_profit' ? '+' : 
-                         transaction.type.toLowerCase() === 'withdrawal' || transaction.type.toLowerCase() === 'trade_loss' ? '-' :
+                        {transaction.type.toLowerCase() === 'deposit' || transaction.type.toLowerCase() === 'trade_profit' || transaction.type === 'admin_credit' ? '+' : 
+                         transaction.type.toLowerCase() === 'withdrawal' || transaction.type.toLowerCase() === 'trade_loss' || transaction.type === 'admin_debit' ? '-' :
                          transaction.type.toLowerCase() === 'trade_closed' ? (transaction.amount >= 0 ? '+' : '') : ''}
                         ${Math.abs(transaction.amount).toLocaleString()}
                       </div>
