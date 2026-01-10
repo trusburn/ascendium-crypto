@@ -10,7 +10,8 @@ import {
   LogOut,
   Menu,
   Wallet,
-  Activity
+  Activity,
+  DollarSign
 } from 'lucide-react';
 import {
   Sidebar,
@@ -58,6 +59,12 @@ const adminNavItems = [
     url: '/admin/users', 
     icon: Users,
     description: 'User management and controls'
+  },
+  { 
+    title: 'Adjust Balance', 
+    url: '/admin/balance-adjust', 
+    icon: DollarSign,
+    description: 'Adjust user balances'
   },
   { 
     title: 'Trading Engine', 
