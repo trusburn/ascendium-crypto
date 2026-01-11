@@ -6,8 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { TrendingUp, TrendingDown, Activity, DollarSign, Bitcoin, DollarSign as Forex, Wallet, Square } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, DollarSign, Bitcoin, DollarSign as Forex, Wallet, Square, Clock, Target, ShieldAlert } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface PurchasedSignal {
   id: string;
@@ -24,6 +27,13 @@ interface ActiveTrade {
   profit_multiplier: number;
   started_at: string;
   signal_name: string;
+  entry_price?: number;
+  current_price?: number;
+  trading_pair?: string;
+  stop_loss?: number;
+  take_profit?: number;
+  duration_type?: string;
+  expires_at?: string;
 }
 
 interface CandlestickData {
@@ -44,6 +54,7 @@ interface TradeableAsset {
 }
 
 type TradingEngineType = 'rising' | 'general';
+type DurationType = '1h' | '6h' | '24h' | '7d' | 'unlimited';
 
 // NOTE: Profit calculation is now done entirely in the DATABASE via PostgreSQL functions
 // Frontend only reads current_profit from the trades table - NO client-side calculations
@@ -63,6 +74,14 @@ const BALANCE_OPTIONS = [
   { value: 'interest_earned', label: 'Interest Earned', key: 'interest_earned' },
   { value: 'commissions', label: 'Commissions', key: 'commissions' },
 ] as const;
+
+const DURATION_OPTIONS: { value: DurationType; label: string }[] = [
+  { value: 'unlimited', label: 'No Limit' },
+  { value: '1h', label: '1 Hour' },
+  { value: '6h', label: '6 Hours' },
+  { value: '24h', label: '24 Hours' },
+  { value: '7d', label: '7 Days' },
+];
 
 const TradingChart = () => {
   const { user } = useAuth();
@@ -85,6 +104,12 @@ const TradingChart = () => {
   const [forexAssets, setForexAssets] = useState<TradeableAsset[]>([]);
   const [assetType, setAssetType] = useState<'crypto' | 'forex'>('crypto');
   const [tradingEngine, setTradingEngine] = useState<TradingEngineType>('rising');
+  
+  // New trade options
+  const [stopLoss, setStopLoss] = useState<string>('');
+  const [takeProfit, setTakeProfit] = useState<string>('');
+  const [duration, setDuration] = useState<DurationType>('unlimited');
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
   // Fetch trading engine setting for current user
   useEffect(() => {
@@ -330,7 +355,7 @@ const TradingChart = () => {
         console.log('📈 Fetching active trades...');
         const { data: tradesData, error: tradesError } = await supabase
           .from('trades')
-          .select('id, trade_type, initial_amount, current_profit, profit_multiplier, started_at, signal_id')
+          .select('id, trade_type, initial_amount, current_profit, profit_multiplier, started_at, signal_id, entry_price, current_price, trading_pair, stop_loss, take_profit, duration_type, expires_at')
           .eq('user_id', user.id)
           .eq('status', 'active');
 
@@ -434,7 +459,7 @@ const TradingChart = () => {
         // Refresh trades data to get updated current_profit values from DB
         const { data: tradesData } = await supabase
           .from('trades')
-          .select('id, trade_type, initial_amount, current_profit, profit_multiplier, started_at, signal_id')
+          .select('id, trade_type, initial_amount, current_profit, profit_multiplier, started_at, signal_id, entry_price, current_price, trading_pair, stop_loss, take_profit, duration_type, expires_at')
           .eq('user_id', user?.id)
           .eq('status', 'active');
         
@@ -559,6 +584,9 @@ const TradingChart = () => {
         p_balance_source: selectedBalanceSource,
         p_trading_pair: assetData.symbol,
         p_market_type: assetType,
+        p_stop_loss: stopLoss ? parseFloat(stopLoss) : null,
+        p_take_profit: takeProfit ? parseFloat(takeProfit) : null,
+        p_duration_type: duration,
       });
 
       if (tradeError) {
@@ -591,7 +619,7 @@ const TradingChart = () => {
       // Refresh trades data
       const { data: tradesData } = await supabase
         .from('trades')
-        .select('id, trade_type, initial_amount, current_profit, profit_multiplier, started_at, signal_id, trading_pair, trade_direction')
+        .select('id, trade_type, initial_amount, current_profit, profit_multiplier, started_at, signal_id, trading_pair, trade_direction, entry_price, current_price, stop_loss, take_profit, duration_type, expires_at')
         .eq('user_id', user.id)
         .eq('status', 'active');
 
@@ -899,6 +927,83 @@ const TradingChart = () => {
               </div>
             </div>
 
+            {/* Advanced Trading Options */}
+            <Collapsible open={showAdvancedOptions} onOpenChange={setShowAdvancedOptions}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
+                  <span className="flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    Advanced Options (SL/TP, Duration)
+                  </span>
+                  <span className="text-xs">{showAdvancedOptions ? '▲' : '▼'}</span>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Stop Loss */}
+                  <div>
+                    <Label className="text-sm font-medium mb-2 flex items-center gap-1">
+                      <ShieldAlert className="h-4 w-4 text-destructive" />
+                      Stop Loss
+                    </Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="number"
+                        placeholder="Auto-close at loss"
+                        value={stopLoss}
+                        onChange={(e) => setStopLoss(e.target.value)}
+                        className="pl-9"
+                        step="0.01"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Close if price hits this level</p>
+                  </div>
+                  
+                  {/* Take Profit */}
+                  <div>
+                    <Label className="text-sm font-medium mb-2 flex items-center gap-1">
+                      <Target className="h-4 w-4 text-crypto-green" />
+                      Take Profit
+                    </Label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="number"
+                        placeholder="Auto-close at profit"
+                        value={takeProfit}
+                        onChange={(e) => setTakeProfit(e.target.value)}
+                        className="pl-9"
+                        step="0.01"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Lock in profit at this level</p>
+                  </div>
+                  
+                  {/* Duration */}
+                  <div>
+                    <Label className="text-sm font-medium mb-2 flex items-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      Trade Duration
+                    </Label>
+                    <Select value={duration} onValueChange={(v) => setDuration(v as DurationType)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DURATION_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-1">Auto-close after this time</p>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
             <div className="flex space-x-4">
               <Button
                 onClick={() => handleTrade('buy')}
@@ -926,35 +1031,46 @@ const TradingChart = () => {
       {activeTrades.length > 0 && (
         <Card className="bg-muted/50 border-border">
           <CardHeader>
-            <CardTitle className="text-foreground">Active Trades</CardTitle>
+            <CardTitle className="text-foreground">Active Trades ({activeTrades.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {activeTrades.map((trade) => {
                 const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
                 const currentProfit = getProfit(trade);
+                const pnlPercent = trade.initial_amount > 0 ? (currentProfit / trade.initial_amount) * 100 : 0;
+                const equity = trade.initial_amount + currentProfit;
+                
+                // Calculate time remaining for duration trades
+                let timeRemaining = '';
+                if (trade.expires_at) {
+                  const expiresAt = new Date(trade.expires_at);
+                  const now = new Date();
+                  const diff = expiresAt.getTime() - now.getTime();
+                  if (diff > 0) {
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    timeRemaining = hours > 0 ? `${hours}h ${mins}m left` : `${mins}m left`;
+                  } else {
+                    timeRemaining = 'Expiring...';
+                  }
+                }
                 
                 return (
-                  <div key={trade.id} className="flex items-center justify-between p-3 bg-background rounded-lg border">
-                    <div className="flex items-center space-x-3">
-                      <Badge className={trade.trade_type === 'buy' ? 'bg-crypto-green/20 text-crypto-green' : 'bg-destructive/20 text-destructive'}>
-                        {trade.trade_type.toUpperCase()}
-                      </Badge>
-                    <div>
-                      <p className="font-medium text-foreground">{trade.signal_name}</p>
-                      <p className="text-sm text-foreground/70">
-                        ${trade.initial_amount} • ×{trade.profit_multiplier}
-                      </p>
-                    </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className={`font-bold ${currentProfit >= 0 ? 'text-crypto-green' : 'text-destructive'}`}>
-                          {currentProfit >= 0 ? '+' : ''}${currentProfit.toFixed(2)}
-                        </p>
-                        <p className="text-sm text-foreground/70">
-                          {hoursElapsed.toFixed(1)}h ago
-                        </p>
+                  <div key={trade.id} className="p-4 bg-background rounded-lg border space-y-3">
+                    {/* Trade Header */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <Badge className={trade.trade_type === 'buy' ? 'bg-crypto-green/20 text-crypto-green' : 'bg-destructive/20 text-destructive'}>
+                          {trade.trade_type.toUpperCase()}
+                        </Badge>
+                        <div>
+                          <p className="font-medium text-foreground">{trade.trading_pair || trade.signal_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Entry: ${trade.entry_price?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || 'N/A'}
+                            {trade.current_price && ` → $${trade.current_price.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                          </p>
+                        </div>
                       </div>
                       <Button
                         size="sm"
@@ -976,16 +1092,65 @@ const TradingChart = () => {
                             });
                           } else {
                             toast({
-                              title: "Trade Stopped",
-                              description: `Trade closed with ${currentProfit >= 0 ? 'profit' : 'loss'} of $${Math.abs(currentProfit).toFixed(2)}`
+                              title: "Trade Closed",
+                              description: `Closed with ${currentProfit >= 0 ? 'profit' : 'loss'} of $${Math.abs(currentProfit).toFixed(2)} (${pnlPercent >= 0 ? '+' : ''}${pnlPercent.toFixed(2)}%)`
                             });
                             setActiveTrades(prev => prev.filter(t => t.id !== trade.id));
                           }
                         }}
                       >
                         <Square className="h-3 w-3 mr-1" />
-                        Stop
+                        Close Trade
                       </Button>
+                    </div>
+                    
+                    {/* Trade Stats */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                      <div className="bg-muted/50 rounded-md p-2">
+                        <p className="text-xs text-muted-foreground">Invested</p>
+                        <p className="font-medium">${trade.initial_amount.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-muted/50 rounded-md p-2">
+                        <p className="text-xs text-muted-foreground">Equity</p>
+                        <p className={`font-medium ${equity >= trade.initial_amount ? 'text-crypto-green' : 'text-destructive'}`}>
+                          ${equity.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="bg-muted/50 rounded-md p-2">
+                        <p className="text-xs text-muted-foreground">P/L ($)</p>
+                        <p className={`font-bold ${currentProfit >= 0 ? 'text-crypto-green' : 'text-destructive'}`}>
+                          {currentProfit >= 0 ? '+' : ''}${currentProfit.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="bg-muted/50 rounded-md p-2">
+                        <p className="text-xs text-muted-foreground">P/L (%)</p>
+                        <p className={`font-bold ${pnlPercent >= 0 ? 'text-crypto-green' : 'text-destructive'}`}>
+                          {pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Trade Info Footer */}
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {hoursElapsed.toFixed(1)}h ago
+                      </span>
+                      {trade.duration_type && trade.duration_type !== 'unlimited' && (
+                        <Badge variant="outline" className="text-xs">
+                          {timeRemaining || trade.duration_type}
+                        </Badge>
+                      )}
+                      {trade.stop_loss && (
+                        <Badge variant="outline" className="text-xs border-destructive/50 text-destructive">
+                          SL: ${trade.stop_loss}
+                        </Badge>
+                      )}
+                      {trade.take_profit && (
+                        <Badge variant="outline" className="text-xs border-crypto-green/50 text-crypto-green">
+                          TP: ${trade.take_profit}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 );
