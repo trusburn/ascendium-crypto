@@ -309,7 +309,9 @@ export type Database = {
           asset_id: string | null
           current_price: number | null
           current_profit: number
+          duration_type: string | null
           entry_price: number | null
+          expires_at: string | null
           id: string
           initial_amount: number
           last_updated: string
@@ -320,6 +322,8 @@ export type Database = {
           signal_id: string | null
           started_at: string
           status: string
+          stop_loss: number | null
+          take_profit: number | null
           trade_direction: string | null
           trade_type: string
           trading_pair: string | null
@@ -329,7 +333,9 @@ export type Database = {
           asset_id?: string | null
           current_price?: number | null
           current_profit?: number
+          duration_type?: string | null
           entry_price?: number | null
+          expires_at?: string | null
           id?: string
           initial_amount?: number
           last_updated?: string
@@ -340,6 +346,8 @@ export type Database = {
           signal_id?: string | null
           started_at?: string
           status?: string
+          stop_loss?: number | null
+          take_profit?: number | null
           trade_direction?: string | null
           trade_type: string
           trading_pair?: string | null
@@ -349,7 +357,9 @@ export type Database = {
           asset_id?: string | null
           current_price?: number | null
           current_profit?: number
+          duration_type?: string | null
           entry_price?: number | null
+          expires_at?: string | null
           id?: string
           initial_amount?: number
           last_updated?: string
@@ -360,6 +370,8 @@ export type Database = {
           signal_id?: string | null
           started_at?: string
           status?: string
+          stop_loss?: number | null
+          take_profit?: number | null
           trade_direction?: string | null
           trade_type?: string
           trading_pair?: string | null
@@ -529,6 +541,8 @@ export type Database = {
         Returns: number
       }
       check_and_liquidate_trades: { Args: never; Returns: undefined }
+      check_sl_tp_triggers: { Args: never; Returns: undefined }
+      check_trade_expiration: { Args: never; Returns: undefined }
       deduct_trade_balance: {
         Args: { p_amount: number; p_user_id: string }
         Returns: boolean
@@ -578,6 +592,25 @@ export type Database = {
               p_profit_multiplier: number
               p_purchased_signal_id: string
               p_signal_id: string
+              p_trade_type: string
+              p_trading_pair?: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_asset_id: string
+              p_balance_source: string
+              p_duration_type?: string
+              p_entry_price: number
+              p_initial_amount: number
+              p_market_type?: string
+              p_profit_multiplier: number
+              p_purchased_signal_id: string
+              p_signal_id: string
+              p_stop_loss?: number
+              p_take_profit?: number
               p_trade_type: string
               p_trading_pair?: string
               p_user_id: string
