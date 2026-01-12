@@ -8,13 +8,14 @@ const corsHeaders = {
 };
 
 interface NotificationRequest {
-  type: 'deposit_approved' | 'deposit_rejected' | 'withdrawal_approved' | 'withdrawal_rejected' | 'verification_required';
+  type: 'deposit_approved' | 'deposit_rejected' | 'withdrawal_approved' | 'withdrawal_rejected' | 'verification_required' | 'balance_credit' | 'balance_debit';
   userId: string;
   data?: {
     amount?: number;
     cryptoType?: string;
     reason?: string;
     transactionId?: string;
+    balanceType?: string;
   };
 }
 
@@ -122,27 +123,48 @@ const handler = async (req: Request): Promise<Response> => {
     const userEmail = userData.user.email;
     console.log('Sending notification to:', userEmail);
 
-    // Get email settings for logo
+    // Get email settings
     const { data: emailSettings } = await supabase
       .from('admin_settings')
       .select('key, value')
-      .in('key', ['email_logo_url']);
+      .in('key', ['email_logo_url', 'email_sender_name', 'email_from_address']);
     
     let logoUrl = '';
+    let senderName = 'Trading Platform';
+    let senderEmail = 'onboarding@resend.dev';
     
     if (emailSettings) {
       const logoSetting = emailSettings.find(s => s.key === 'email_logo_url');
+      const nameSetting = emailSettings.find(s => s.key === 'email_sender_name');
+      const emailSetting = emailSettings.find(s => s.key === 'email_from_address');
+      
       if (logoSetting?.value) {
         logoUrl = typeof logoSetting.value === 'string' ? logoSetting.value : String(logoSetting.value);
       }
+      if (nameSetting?.value) {
+        const nameValue = typeof nameSetting.value === 'string' ? nameSetting.value : String(nameSetting.value);
+        if (nameValue.trim()) senderName = nameValue.trim();
+      }
+      if (emailSetting?.value) {
+        const emailValue = typeof emailSetting.value === 'string' ? emailSetting.value : String(emailSetting.value);
+        // Only use custom email if it's from a custom domain
+        const freeProviders = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'live.com'];
+        const emailDomain = emailValue.split('@')[1]?.toLowerCase();
+        if (emailDomain && !freeProviders.includes(emailDomain)) {
+          senderEmail = emailValue;
+        }
+      }
     }
 
-    // Generate email content based on type
-    const emailContent = generateEmailContent(type, data, logoUrl);
+    const fromEmail = `${senderName} <${senderEmail}>`;
+    console.log('Using sender:', fromEmail);
 
-    // Send email using Resend test domain
+    // Generate email content based on type
+    const emailContent = generateEmailContent(type, data, logoUrl, senderName);
+
+    // Send email
     const { data: sendData, error: emailError } = await resend.emails.send({
-      from: 'Trading Platform <onboarding@resend.dev>',
+      from: fromEmail,
       to: [userEmail],
       subject: emailContent.subject,
       html: emailContent.html
@@ -181,26 +203,30 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-function generateEmailContent(type: string, data?: any, logoUrl?: string): { subject: string; html: string } {
+function generateEmailContent(type: string, data?: any, logoUrl?: string, senderName?: string): { subject: string; html: string } {
+  const platformName = senderName || 'Trading Platform';
+  
   const styles = `
     <style>
-      body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+      body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
       .container { max-width: 600px; margin: 0 auto; padding: 20px; }
       .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-      .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+      .header img { max-width: 150px; max-height: 60px; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto; }
+      .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
       .success { background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 15px 0; border-radius: 5px; }
       .error { background: #f8d7da; border-left: 4px solid #dc3545; padding: 15px; margin: 15px 0; border-radius: 5px; }
       .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0; border-radius: 5px; }
-      .footer { text-align: center; margin-top: 30px; color: #888; font-size: 12px; }
+      .info { background: #d1ecf1; border-left: 4px solid #17a2b8; padding: 15px; margin: 15px 0; border-radius: 5px; }
+      .footer { text-align: center; margin-top: 30px; padding: 20px; color: #888; font-size: 12px; }
       .amount { font-size: 24px; font-weight: bold; color: #333; }
     </style>
   `;
 
-  const logoHtml = logoUrl ? `<img src="${logoUrl}" alt="Logo" style="max-width: 150px; margin-bottom: 10px;" />` : '';
+  const logoHtml = logoUrl ? `<img src="${logoUrl}" alt="${platformName}" style="max-width: 150px; max-height: 60px; margin-bottom: 15px;" />` : '';
   const footerHtml = `
     <div class="footer">
-      <p>This is an automated message from Trading Platform.</p>
-      <p>© ${new Date().getFullYear()} Trading Platform. All rights reserved.</p>
+      <p>This is an automated message from ${platformName}.</p>
+      <p>© ${new Date().getFullYear()} ${platformName}. All rights reserved.</p>
     </div>
   `;
 
@@ -276,6 +302,34 @@ function generateEmailContent(type: string, data?: any, logoUrl?: string): { sub
       `;
       break;
 
+    case 'balance_credit':
+      subject = 'Funds Added to Your Account';
+      bodyContent = `
+        <div class="success">
+          <h2>✓ Balance Credited</h2>
+          <p>Funds have been added to your account.</p>
+        </div>
+        <p class="amount">Amount: ${amount}</p>
+        <p><strong>Balance Type:</strong> ${data?.balanceType || 'Account'}</p>
+        ${data?.reason ? `<p><strong>Reason:</strong> ${data.reason}</p>` : ''}
+        <p>Log in to your dashboard to view your updated balance.</p>
+      `;
+      break;
+
+    case 'balance_debit':
+      subject = 'Balance Adjustment Notice';
+      bodyContent = `
+        <div class="info">
+          <h2>ℹ️ Balance Adjusted</h2>
+          <p>Your account balance has been adjusted.</p>
+        </div>
+        <p class="amount">Amount: ${amount}</p>
+        <p><strong>Balance Type:</strong> ${data?.balanceType || 'Account'}</p>
+        ${data?.reason ? `<p><strong>Reason:</strong> ${data.reason}</p>` : ''}
+        <p>If you have questions about this adjustment, please contact support.</p>
+      `;
+      break;
+
     default:
       subject = 'Account Notification';
       bodyContent = `<p>You have a new notification regarding your account.</p>`;
@@ -293,7 +347,7 @@ function generateEmailContent(type: string, data?: any, logoUrl?: string): { sub
       <div class="container">
         <div class="header">
           ${logoHtml}
-          <h1 style="margin: 0;">Trading Platform</h1>
+          <h1 style="margin: 0; font-size: 24px;">${platformName}</h1>
         </div>
         <div class="content">
           ${bodyContent}
