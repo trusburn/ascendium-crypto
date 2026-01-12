@@ -24,6 +24,7 @@ export default function AdminEmail() {
   
   // Email settings
   const [adminEmail, setAdminEmail] = useState('');
+  const [senderName, setSenderName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
@@ -45,7 +46,7 @@ export default function AdminEmail() {
       const { data, error } = await supabase
         .from('admin_settings')
         .select('key, value')
-        .in('key', ['email_from_address', 'email_logo_url', 'admin_contact_email']);
+        .in('key', ['email_from_address', 'email_sender_name', 'email_logo_url', 'admin_contact_email']);
       
       if (error) throw error;
       
@@ -53,6 +54,7 @@ export default function AdminEmail() {
         data.forEach(item => {
           const value = typeof item.value === 'string' ? item.value : String(item.value || '');
           if (item.key === 'email_from_address') setAdminEmail(value);
+          if (item.key === 'email_sender_name') setSenderName(value);
           if (item.key === 'email_logo_url') setLogoUrl(value);
           if (item.key === 'admin_contact_email') setContactEmail(value);
         });
@@ -122,6 +124,7 @@ export default function AdminEmail() {
       // Save all settings
       const settings = [
         { key: 'email_from_address', value: JSON.stringify(adminEmail) },
+        { key: 'email_sender_name', value: JSON.stringify(senderName || 'Trading Platform') },
         { key: 'email_logo_url', value: JSON.stringify(logoUrl) },
         { key: 'admin_contact_email', value: JSON.stringify(contactEmail || adminEmail) }
       ];
@@ -350,6 +353,20 @@ export default function AdminEmail() {
         <CardContent className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
+              <Label htmlFor="senderName">Sender Name / Title *</Label>
+              <Input
+                id="senderName"
+                type="text"
+                placeholder="Your Platform Name"
+                value={senderName}
+                onChange={(e) => setSenderName(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                This name will appear as the sender in users' inboxes (e.g., "Your Platform")
+              </p>
+            </div>
+            
+            <div className="space-y-2">
               <Label htmlFor="adminEmail">Sender Email Address *</Label>
               <Input
                 id="adminEmail"
@@ -359,10 +376,12 @@ export default function AdminEmail() {
                 onChange={(e) => setAdminEmail(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                This email will appear as the "From" address on all outgoing emails
+                This email will appear as the "From" address (requires verified domain in Resend)
               </p>
             </div>
-            
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="contactEmail">Contact Form Recipient Email</Label>
               <Input
@@ -376,21 +395,35 @@ export default function AdminEmail() {
                 Contact form submissions will be sent to this email (defaults to sender email)
               </p>
             </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="logoUrl">Email Logo URL</Label>
+              <Input
+                id="logoUrl"
+                type="url"
+                placeholder="https://yourplatform.com/logo.png"
+                value={logoUrl}
+                onChange={(e) => setLogoUrl(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Logo image to display in email headers (use a publicly accessible URL)
+              </p>
+            </div>
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="logoUrl">Email Logo URL (Optional)</Label>
-            <Input
-              id="logoUrl"
-              type="url"
-              placeholder="https://yourplatform.com/logo.png"
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Logo image to display in email headers
-            </p>
-          </div>
+          {logoUrl && (
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <Label className="text-sm font-medium mb-2 block">Logo Preview</Label>
+              <img 
+                src={logoUrl} 
+                alt="Email Logo Preview" 
+                className="max-h-16 object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          )}
           
           <Button
             onClick={handleSaveSettings}

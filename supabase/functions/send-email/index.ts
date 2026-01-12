@@ -140,30 +140,47 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: emailSettings, error: settingsError } = await supabase
       .from('admin_settings')
       .select('key, value')
-      .in('key', ['email_from_address', 'email_logo_url']);
+      .in('key', ['email_from_address', 'email_sender_name', 'email_logo_url']);
     
     if (settingsError) {
       console.error('Error fetching email settings:', settingsError);
     }
 
-    // Use Resend's test domain for sending - this works with any recipient
-    // In production, replace with your verified domain
-    let fromEmail = 'Trading Platform <onboarding@resend.dev>';
+    // Default values
+    let senderName = 'Trading Platform';
+    let senderEmail = 'onboarding@resend.dev';
     let logoUrl = '';
     
     if (emailSettings) {
+      const nameSetting = emailSettings.find(s => s.key === 'email_sender_name');
+      const emailSetting = emailSettings.find(s => s.key === 'email_from_address');
       const logoSetting = emailSettings.find(s => s.key === 'email_logo_url');
+      
+      if (nameSetting?.value) {
+        const nameValue = typeof nameSetting.value === 'string' ? nameSetting.value : String(nameSetting.value);
+        if (nameValue.trim()) senderName = nameValue.trim();
+      }
+      
       if (logoSetting?.value) {
         logoUrl = typeof logoSetting.value === 'string' ? logoSetting.value : String(logoSetting.value);
       }
-      // Note: email_from_address from admin settings is stored but Resend test mode requires onboarding@resend.dev
-      // Once you verify your domain in Resend, uncomment the following:
-      // const emailSetting = emailSettings.find(s => s.key === 'email_from_address');
-      // if (emailSetting?.value) {
-      //   const emailValue = typeof emailSetting.value === 'string' ? emailSetting.value : String(emailSetting.value);
-      //   fromEmail = `Trading Platform <${emailValue}>`;
-      // }
+      
+      // Use custom email if domain is verified (not a gmail/hotmail/etc)
+      // For now, we use onboarding@resend.dev but store the custom email for when domain is verified
+      if (emailSetting?.value) {
+        const emailValue = typeof emailSetting.value === 'string' ? emailSetting.value : String(emailSetting.value);
+        // Only use custom email if it's from a custom domain (not free email providers)
+        // This will work once the domain is verified in Resend
+        const freeProviders = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'live.com'];
+        const emailDomain = emailValue.split('@')[1]?.toLowerCase();
+        if (emailDomain && !freeProviders.includes(emailDomain)) {
+          senderEmail = emailValue;
+        }
+      }
     }
+
+    const fromEmail = `${senderName} <${senderEmail}>`;
+    console.log('Using sender:', fromEmail);
 
     // Determine recipients based on email type
     if (type === 'broadcast') {
@@ -226,7 +243,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Generate HTML based on email type
-    const htmlContent = generateEmailHTML(type, subject, message, data, logoUrl);
+    const htmlContent = generateEmailHTML(type, subject, message, data, logoUrl, senderName);
 
     console.log(`Sending email to ${recipients.length} recipient(s)...`);
 
@@ -302,16 +319,20 @@ function generateEmailHTML(
   subject: string,
   message: string,
   data?: Record<string, any>,
-  logoUrl?: string
+  logoUrl?: string,
+  senderName?: string
 ): string {
+  const platformName = senderName || 'Trading Platform';
+  
   const styles = `
     <style>
-      body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+      body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f4f4f4; }
       .container { max-width: 600px; margin: 0 auto; padding: 20px; }
       .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-      .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+      .header img { max-width: 150px; max-height: 60px; margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto; }
+      .content { background: #ffffff; padding: 30px; border-radius: 0 0 10px 10px; }
       .button { display: inline-block; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
-      .footer { text-align: center; margin-top: 30px; color: #888; font-size: 12px; }
+      .footer { text-align: center; margin-top: 30px; padding: 20px; color: #888; font-size: 12px; }
       .alert { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 15px 0; border-radius: 5px; }
       .success { background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 15px 0; border-radius: 5px; }
       .error { background: #f8d7da; border-left: 4px solid #dc3545; padding: 15px; margin: 15px 0; border-radius: 5px; }
@@ -363,6 +384,9 @@ function generateEmailHTML(
       content = `<p style="white-space: pre-wrap;">${message}</p>`;
   }
 
+  // Build logo HTML - ensure it's properly displayed
+  const logoHtml = logoUrl ? `<img src="${logoUrl}" alt="${platformName}" style="max-width: 150px; max-height: 60px; margin-bottom: 15px;" />` : '';
+
   return `
     <!DOCTYPE html>
     <html>
@@ -374,17 +398,17 @@ function generateEmailHTML(
     <body>
       <div class="container">
         <div class="header">
-          ${logoUrl ? `<img src="${logoUrl}" alt="Logo" style="max-width: 150px; margin-bottom: 10px;" />` : ''}
-          <h1 style="margin: 0;">Trading Platform</h1>
+          ${logoHtml}
+          <h1 style="margin: 0; font-size: 24px;">${platformName}</h1>
         </div>
         <div class="content">
-          <h2 style="margin-top: 0;">${subject}</h2>
+          <h2 style="margin-top: 0; color: #333;">${subject}</h2>
           ${content}
-          ${data?.additionalInfo ? `<p>${data.additionalInfo}</p>` : ''}
+          ${data?.additionalInfo ? `<p style="color: #666; font-style: italic;">${data.additionalInfo}</p>` : ''}
         </div>
         <div class="footer">
-          <p>This is an automated message from Trading Platform.</p>
-          <p>© ${new Date().getFullYear()} Trading Platform. All rights reserved.</p>
+          <p>This is an automated message from ${platformName}.</p>
+          <p>© ${new Date().getFullYear()} ${platformName}. All rights reserved.</p>
         </div>
       </div>
     </body>
