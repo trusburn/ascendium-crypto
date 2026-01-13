@@ -456,6 +456,30 @@ const TradingChart = () => {
           console.log('✅ Database profits synced');
         }
         
+        // Check SL/TP triggers - this will automatically close trades that hit their limits
+        const { data: slTpResult, error: slTpError } = await supabase.rpc('check_sl_tp_triggers');
+        if (slTpError) {
+          console.error('❌ SL/TP check error:', slTpError);
+        } else if (slTpResult && (slTpResult as any).triggered_count > 0) {
+          console.log('🎯 SL/TP triggered:', slTpResult);
+          toast({
+            title: "Trade Auto-Closed",
+            description: `${(slTpResult as any).triggered_count} trade(s) closed by Stop Loss or Take Profit`,
+          });
+        }
+        
+        // Check trade expiration
+        const { data: expResult, error: expError } = await supabase.rpc('check_trade_expiration');
+        if (expError) {
+          console.error('❌ Expiration check error:', expError);
+        } else if (expResult && (expResult as any).expired_count > 0) {
+          console.log('⏰ Trades expired:', expResult);
+          toast({
+            title: "Trade Expired",
+            description: `${(expResult as any).expired_count} trade(s) closed due to expiration`,
+          });
+        }
+        
         // Refresh trades data to get updated current_profit values from DB
         const { data: tradesData } = await supabase
           .from('trades')
@@ -939,45 +963,64 @@ const TradingChart = () => {
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-4 pt-4">
+                {/* Current Price Display */}
+                {selectedAsset && (
+                  <div className="p-3 bg-background/50 rounded-lg border border-border">
+                    <p className="text-xs text-muted-foreground mb-1">Current Asset Price</p>
+                    <p className="text-lg font-bold text-foreground">
+                      ${(cryptoAssets.find(a => a.id === selectedAsset)?.current_price || 
+                         forexAssets.find(a => a.id === selectedAsset)?.current_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Set SL below this for BUY orders, above for SELL orders. Set TP above for BUY, below for SELL.
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Stop Loss */}
                   <div>
                     <Label className="text-sm font-medium mb-2 flex items-center gap-1">
                       <ShieldAlert className="h-4 w-4 text-destructive" />
-                      Stop Loss
+                      Stop Loss (Price Level)
                     </Label>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         type="number"
-                        placeholder="Auto-close at loss"
+                        placeholder={`e.g., ${((cryptoAssets.find(a => a.id === selectedAsset)?.current_price || 
+                                               forexAssets.find(a => a.id === selectedAsset)?.current_price || 100) * 0.95).toFixed(2)}`}
                         value={stopLoss}
                         onChange={(e) => setStopLoss(e.target.value)}
                         className="pl-9"
                         step="0.01"
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Close if price hits this level</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Auto-close when price reaches this level
+                    </p>
                   </div>
                   
                   {/* Take Profit */}
                   <div>
                     <Label className="text-sm font-medium mb-2 flex items-center gap-1">
                       <Target className="h-4 w-4 text-crypto-green" />
-                      Take Profit
+                      Take Profit (Price Level)
                     </Label>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         type="number"
-                        placeholder="Auto-close at profit"
+                        placeholder={`e.g., ${((cryptoAssets.find(a => a.id === selectedAsset)?.current_price || 
+                                               forexAssets.find(a => a.id === selectedAsset)?.current_price || 100) * 1.05).toFixed(2)}`}
                         value={takeProfit}
                         onChange={(e) => setTakeProfit(e.target.value)}
                         className="pl-9"
                         step="0.01"
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Lock in profit at this level</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Lock in profit when price reaches this level
+                    </p>
                   </div>
                   
                   {/* Duration */}
