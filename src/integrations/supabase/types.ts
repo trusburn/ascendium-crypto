@@ -541,8 +541,8 @@ export type Database = {
         Returns: number
       }
       check_and_liquidate_trades: { Args: never; Returns: undefined }
-      check_sl_tp_triggers: { Args: never; Returns: Json }
-      check_trade_expiration: { Args: never; Returns: Json }
+      check_sl_tp_triggers: { Args: never; Returns: undefined }
+      check_trade_expiration: { Args: never; Returns: undefined }
       deduct_trade_balance: {
         Args: { p_amount: number; p_user_id: string }
         Returns: boolean
