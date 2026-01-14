@@ -162,7 +162,6 @@ export type Database = {
           interest_earned: number | null
           is_frozen: boolean
           location: string | null
-          margin_locked: number | null
           net_balance: number | null
           phone: string | null
           total_invested: number | null
@@ -182,7 +181,6 @@ export type Database = {
           interest_earned?: number | null
           is_frozen?: boolean
           location?: string | null
-          margin_locked?: number | null
           net_balance?: number | null
           phone?: string | null
           total_invested?: number | null
@@ -202,7 +200,6 @@ export type Database = {
           interest_earned?: number | null
           is_frozen?: boolean
           location?: string | null
-          margin_locked?: number | null
           net_balance?: number | null
           phone?: string | null
           total_invested?: number | null
@@ -559,10 +556,6 @@ export type Database = {
         Returns: Database["public"]["Enums"]["user_role"]
       }
       is_admin: { Args: { check_user_id?: string }; Returns: boolean }
-      lock_margin_for_trade: {
-        Args: { p_amount: number; p_balance_source: string; p_user_id: string }
-        Returns: boolean
-      }
       purchase_signal:
         | { Args: { p_signal_id: string; p_user_id: string }; Returns: Json }
         | {
@@ -574,34 +567,56 @@ export type Database = {
             Returns: Json
           }
       recalculate_net_balance: { Args: { p_user_id: string }; Returns: number }
-      release_margin_and_apply_pnl: {
-        Args: {
-          p_balance_source: string
-          p_margin_amount: number
-          p_pnl: number
-          p_user_id: string
-        }
-        Returns: boolean
-      }
-      start_trade_validated: {
-        Args: {
-          p_asset_id: string
-          p_balance_source: string
-          p_duration_type?: string
-          p_entry_price: number
-          p_initial_amount: number
-          p_market_type?: string
-          p_profit_multiplier: number
-          p_purchased_signal_id: string
-          p_signal_id: string
-          p_stop_loss?: number
-          p_take_profit?: number
-          p_trade_type: string
-          p_trading_pair?: string
-          p_user_id: string
-        }
-        Returns: Json
-      }
+      start_trade_validated:
+        | {
+            Args: {
+              p_asset_id: string
+              p_balance_source: string
+              p_entry_price: number
+              p_initial_amount: number
+              p_profit_multiplier: number
+              p_purchased_signal_id: string
+              p_signal_id: string
+              p_trade_type: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_asset_id: string
+              p_balance_source: string
+              p_entry_price: number
+              p_initial_amount: number
+              p_market_type?: string
+              p_profit_multiplier: number
+              p_purchased_signal_id: string
+              p_signal_id: string
+              p_trade_type: string
+              p_trading_pair?: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_asset_id: string
+              p_balance_source: string
+              p_duration_type?: string
+              p_entry_price: number
+              p_initial_amount: number
+              p_market_type?: string
+              p_profit_multiplier: number
+              p_purchased_signal_id: string
+              p_signal_id: string
+              p_stop_loss?: number
+              p_take_profit?: number
+              p_trade_type: string
+              p_trading_pair?: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
       stop_all_user_trades: { Args: { p_user_id: string }; Returns: Json }
       stop_single_trade: {
         Args: { p_trade_id: string; p_user_id: string }

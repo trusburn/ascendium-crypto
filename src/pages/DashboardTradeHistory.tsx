@@ -18,8 +18,6 @@ import {
 interface Trade {
   id: string;
   trade_type: string;
-  trade_direction: string | null;
-  trading_pair: string | null;
   initial_amount: number;
   current_profit: number;
   status: string;
@@ -59,7 +57,7 @@ const DashboardTradeHistory = () => {
           signal:signals(name)
         `)
         .eq('user_id', user?.id)
-        .in('status', ['stopped', 'liquidated'])
+        .eq('status', 'stopped')
         .order('last_updated', { ascending: false });
 
       if (error) throw error;
@@ -180,70 +178,45 @@ const DashboardTradeHistory = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Asset</TableHead>
-                      <TableHead>Direction</TableHead>
-                      <TableHead className="text-right">Margin</TableHead>
-                      <TableHead className="text-right">Entry</TableHead>
-                      <TableHead className="text-right">Exit</TableHead>
-                      <TableHead className="text-right">P/L</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Signal</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Investment</TableHead>
+                      <TableHead className="text-right">Entry Price</TableHead>
+                      <TableHead className="text-right">Exit Price</TableHead>
+                      <TableHead className="text-right">Profit/Loss</TableHead>
+                      <TableHead>Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {trades.map((trade) => {
-                      // Calculate trade duration
-                      const startDate = new Date(trade.started_at);
-                      const endDate = new Date(trade.last_updated);
-                      const durationMs = endDate.getTime() - startDate.getTime();
-                      const hours = Math.floor(durationMs / (1000 * 60 * 60));
-                      const minutes = Math.floor((durationMs % (1000 * 60 * 60)) / (1000 * 60));
-                      const durationStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-                      
-                      return (
-                        <TableRow key={trade.id}>
-                          <TableCell className="font-medium">
-                            {trade.trading_pair || trade.signal?.name || 'Unknown'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge 
-                              variant="outline"
-                              className={
-                                (trade.trade_direction || trade.trade_type) === 'buy' 
-                                  ? 'border-green-500 text-green-500' 
-                                  : 'border-red-500 text-red-500'
-                              }
-                            >
-                              {(trade.trade_direction || trade.trade_type || 'buy').toUpperCase()}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {formatCurrency(trade.initial_amount)}
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-xs">
-                            {trade.entry_price ? `$${trade.entry_price.toLocaleString()}` : '-'}
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-xs">
-                            {trade.current_price ? `$${trade.current_price.toLocaleString()}` : '-'}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold">
-                            <span className={trade.current_profit >= 0 ? 'text-green-500' : 'text-red-500'}>
-                              {trade.current_profit >= 0 ? '+' : ''}{formatCurrency(trade.current_profit)}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {durationStr}
-                          </TableCell>
-                          <TableCell>
-                            <Badge 
-                              variant={trade.status === 'liquidated' ? 'destructive' : 'secondary'}
-                            >
-                              {trade.status === 'liquidated' ? 'Liquidated' : 'Closed'}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                    {trades.map((trade) => (
+                      <TableRow key={trade.id}>
+                        <TableCell className="font-medium">
+                          {trade.signal?.name || 'Unknown Signal'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={trade.trade_type === 'buy' ? 'default' : 'secondary'}>
+                            {trade.trade_type.toUpperCase()}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(trade.initial_amount)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {trade.entry_price ? formatCurrency(trade.entry_price) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {trade.current_price ? formatCurrency(trade.current_price) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span className={trade.current_profit >= 0 ? 'text-green-500' : 'text-red-500'}>
+                            {trade.current_profit >= 0 ? '+' : ''}{formatCurrency(trade.current_profit)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {format(new Date(trade.last_updated), 'MMM d, yyyy HH:mm')}
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>

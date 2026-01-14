@@ -65,8 +65,6 @@ interface UserBalances {
   usdt_balance: number;
   interest_earned: number;
   commissions: number;
-  margin_locked: number;
-  net_balance: number;
 }
 
 const BALANCE_OPTIONS = [
@@ -99,8 +97,6 @@ const TradingChart = () => {
     usdt_balance: 0,
     interest_earned: 0,
     commissions: 0,
-    margin_locked: 0,
-    net_balance: 0,
   });
   const [chartData, setChartData] = useState<CandlestickData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,7 +166,7 @@ const TradingChart = () => {
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('btc_balance, eth_balance, usdt_balance, interest_earned, commissions, margin_locked, net_balance')
+          .select('btc_balance, eth_balance, usdt_balance, interest_earned, commissions')
           .eq('id', user.id)
           .single();
 
@@ -182,8 +178,6 @@ const TradingChart = () => {
           usdt_balance: Number(data?.usdt_balance || 0),
           interest_earned: Number(data?.interest_earned || 0),
           commissions: Number(data?.commissions || 0),
-          margin_locked: Number(data?.margin_locked || 0),
-          net_balance: Number(data?.net_balance || 0),
         });
       } catch (error) {
         console.error('Error fetching balances:', error);
@@ -211,8 +205,6 @@ const TradingChart = () => {
             usdt_balance: Number(newData?.usdt_balance || 0),
             interest_earned: Number(newData?.interest_earned || 0),
             commissions: Number(newData?.commissions || 0),
-            margin_locked: Number(newData?.margin_locked || 0),
-            net_balance: Number(newData?.net_balance || 0),
           });
         }
       )
@@ -728,28 +720,11 @@ const TradingChart = () => {
               </Badge>
             </CardTitle>
             <div className="flex items-center space-x-4">
-              {/* MT5-Style Account Summary */}
-              <div className="hidden md:flex items-center space-x-4 text-sm">
-                <div className="text-right border-r border-border pr-4">
-                  <p className="text-xs text-muted-foreground">Balance</p>
-                  <p className="font-bold text-foreground">${userBalances.net_balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                </div>
-                <div className="text-right border-r border-border pr-4">
-                  <p className="text-xs text-muted-foreground">Equity</p>
-                  <p className={`font-bold ${(userBalances.net_balance + totalProfit) >= userBalances.net_balance ? 'text-crypto-green' : 'text-destructive'}`}>
-                    ${(userBalances.net_balance + totalProfit).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <div className="text-right border-r border-border pr-4">
-                  <p className="text-xs text-muted-foreground">Margin</p>
-                  <p className="font-medium text-amber-500">${userBalances.margin_locked.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Floating P/L</p>
-                  <p className={`font-bold ${totalProfit >= 0 ? 'text-crypto-green' : 'text-destructive'}`}>
-                    {totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(2)}
-                  </p>
-                </div>
+              <div className="text-right">
+                <p className="text-sm text-foreground/70">Total Profit</p>
+                <p className={`text-lg font-bold ${totalProfit >= 0 ? 'text-crypto-green' : 'text-destructive'}`}>
+                  {totalProfit >= 0 ? '+' : ''}${totalProfit.toFixed(2)}
+                </p>
               </div>
             </div>
           </div>
@@ -852,10 +827,7 @@ const TradingChart = () => {
               <div className="text-xs text-slate-400">LIVE</div>
               <div className="flex items-center">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mr-2"></div>
-                <span className="text-sm text-white">
-                  {cryptoAssets.find(a => a.id === selectedAsset)?.symbol || 
-                   forexAssets.find(a => a.id === selectedAsset)?.symbol || 'BTC/USD'}
-                </span>
+                <span className="text-sm text-white">BTC/USD</span>
               </div>
             </div>
 
