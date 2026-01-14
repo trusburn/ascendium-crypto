@@ -852,7 +852,10 @@ const TradingChart = () => {
               <div className="text-xs text-slate-400">LIVE</div>
               <div className="flex items-center">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mr-2"></div>
-                <span className="text-sm text-white">BTC/USD</span>
+                <span className="text-sm text-white">
+                  {cryptoAssets.find(a => a.id === selectedAsset)?.symbol || 
+                   forexAssets.find(a => a.id === selectedAsset)?.symbol || 'BTC/USD'}
+                </span>
               </div>
             </div>
 
