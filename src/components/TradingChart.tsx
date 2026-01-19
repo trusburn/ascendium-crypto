@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useRealMarketPrices, CRYPTO_ID_MAP, FOREX_BASE_PRICES } from '@/hooks/useRealMarketPrices';
+import { useRealOHLCData } from '@/hooks/useRealOHLCData';
 
 interface PurchasedSignal {
   id: string;
@@ -114,6 +115,20 @@ const TradingChart = () => {
   const [takeProfit, setTakeProfit] = useState<string>('');
   const [duration, setDuration] = useState<DurationType>('unlimited');
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+
+  // Get selected asset data for OHLC hook
+  const allAssets = [...cryptoAssets, ...forexAssets];
+  const selectedAssetData = allAssets.find(a => a.id === selectedAsset);
+  const selectedSymbol = selectedAssetData?.symbol || 'BTC';
+  const selectedAssetType = (selectedAssetData?.asset_type as 'crypto' | 'forex') || 'crypto';
+  const currentAssetPrice = selectedAssetData ? getPrice(selectedAssetData.symbol, selectedAssetType) : 0;
+
+  // Use REAL OHLC data hook for General engine
+  const { ohlcData: realOHLCData, isLoading: ohlcLoading, refetch: refetchOHLC } = useRealOHLCData(
+    selectedSymbol,
+    selectedAssetType,
+    currentAssetPrice
+  );
 
   // Fetch trading engine setting for current user
   useEffect(() => {
@@ -344,6 +359,54 @@ const TradingChart = () => {
     }));
   }, []);
 
+  // Effect to update chart data based on trading engine and real OHLC data
+  useEffect(() => {
+    if (!selectedAssetData) return;
+    
+    const realPrice = getPrice(selectedAssetData.symbol, selectedAssetData.asset_type as 'crypto' | 'forex');
+    const currentPrice = realPrice > 0 ? realPrice : selectedAssetData.current_price || 100;
+    
+    if (tradingEngine === 'rising') {
+      // Rising engine: Generate upward-trending chart (simulated growth)
+      const baseValue = currentPrice;
+      const data = Array.from({ length: 30 }, (_, i) => {
+        const volatility = baseValue * 0.005;
+        const upwardBias = (i / 30) * baseValue * 0.02; // 2% upward trend
+        const open = baseValue + upwardBias + Math.sin(i * 0.3) * volatility;
+        const close = baseValue + upwardBias + Math.sin((i + 1) * 0.3) * volatility + Math.random() * volatility * 0.5;
+        const high = Math.max(open, close) + Math.random() * volatility;
+        const low = Math.min(open, close) - Math.random() * volatility * 0.3;
+        
+        return {
+          time: new Date(Date.now() - (29 - i) * 60000).toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }),
+          open: Number(open.toFixed(2)),
+          high: Number(high.toFixed(2)),
+          low: Number(Math.max(low, baseValue * 0.98).toFixed(2)),
+          close: Number(Math.max(close, open).toFixed(2)),
+        };
+      });
+      setChartData(data);
+    } else {
+      // GENERAL engine: Use REAL OHLC data from CoinGecko API
+      if (realOHLCData && realOHLCData.length > 0) {
+        // Use real OHLC data from the hook
+        console.log('📊 Using REAL OHLC data:', realOHLCData.length, 'candles for', selectedSymbol);
+        setChartData(realOHLCData);
+      } else if (!ohlcLoading) {
+        // Fallback to generated data if OHLC fetch failed
+        const fallbackData = generateRealCandlestickData(
+          selectedAssetData.symbol,
+          selectedAssetData.asset_type as 'crypto' | 'forex',
+          currentPrice
+        );
+        setChartData(fallbackData);
+      }
+    }
+  }, [tradingEngine, selectedAssetData, realOHLCData, ohlcLoading, selectedSymbol, getPrice, generateRealCandlestickData]);
+
   useEffect(() => {
     const fetchData = async () => {
       if (!user) return;
@@ -422,47 +485,7 @@ const TradingChart = () => {
         console.log('🔄 Merged trades with signals:', mergedTrades);
         setActiveTrades(mergedTrades);
 
-        // Generate chart data based on selected asset and trading engine
-        const allAssets = [...cryptoAssets, ...forexAssets];
-        const selectedAssetData = allAssets.find(a => a.id === selectedAsset);
-        
-        if (selectedAssetData) {
-          const realPrice = getPrice(selectedAssetData.symbol, selectedAssetData.asset_type as 'crypto' | 'forex');
-          const currentPrice = realPrice > 0 ? realPrice : selectedAssetData.current_price || 100;
-          
-          if (tradingEngine === 'rising') {
-            // Rising engine: Generate upward-trending chart
-            const baseValue = currentPrice;
-            const data = Array.from({ length: 30 }, (_, i) => {
-              const volatility = baseValue * 0.005;
-              const upwardBias = (i / 30) * baseValue * 0.02; // 2% upward trend
-              const open = baseValue + upwardBias + Math.sin(i * 0.3) * volatility;
-              const close = baseValue + upwardBias + Math.sin((i + 1) * 0.3) * volatility + Math.random() * volatility * 0.5;
-              const high = Math.max(open, close) + Math.random() * volatility;
-              const low = Math.min(open, close) - Math.random() * volatility * 0.3;
-              
-              return {
-                time: new Date(Date.now() - (29 - i) * 60000).toLocaleTimeString('en-US', { 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                }),
-                open: Number(open.toFixed(2)),
-                high: Number(high.toFixed(2)),
-                low: Number(Math.max(low, baseValue * 0.98).toFixed(2)),
-                close: Number(Math.max(close, open).toFixed(2)),
-              };
-            });
-            setChartData(data);
-          } else {
-            // GENERAL engine: Use REAL market data from APIs
-            const realData = generateRealCandlestickData(
-              selectedAssetData.symbol, 
-              selectedAssetData.asset_type as 'crypto' | 'forex',
-              currentPrice
-            );
-            setChartData(realData);
-          }
-        }
+        // Chart data is now handled by the useEffect below that uses realOHLCData
       } catch (error) {
         console.error('Error:', error);
       } finally {
