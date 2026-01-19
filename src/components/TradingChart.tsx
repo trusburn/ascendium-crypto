@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -6,11 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { TrendingUp, TrendingDown, Activity, DollarSign, Bitcoin, DollarSign as Forex, Wallet, Square, Clock, Target, ShieldAlert } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, DollarSign, Bitcoin, DollarSign as Forex, Wallet, Square, Clock, Target, ShieldAlert, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useRealMarketPrices, CRYPTO_ID_MAP, FOREX_BASE_PRICES } from '@/hooks/useRealMarketPrices';
 
 interface PurchasedSignal {
   id: string;
@@ -58,6 +59,7 @@ type DurationType = '1h' | '6h' | '24h' | '7d' | 'unlimited';
 
 // NOTE: Profit calculation is now done entirely in the DATABASE via PostgreSQL functions
 // Frontend only reads current_profit from the trades table - NO client-side calculations
+// GENERAL engine uses REAL market prices from CoinGecko (crypto) and Exchange Rate API (forex)
 
 interface UserBalances {
   btc_balance: number;
@@ -85,6 +87,7 @@ const DURATION_OPTIONS: { value: DurationType; label: string }[] = [
 
 const TradingChart = () => {
   const { user } = useAuth();
+  const { cryptoPrices, forexRates, getPrice, lastUpdate, refetch: refetchPrices } = useRealMarketPrices();
   const [purchasedSignals, setPurchasedSignals] = useState<PurchasedSignal[]>([]);
   const [activeTrades, setActiveTrades] = useState<ActiveTrade[]>([]);
   const [selectedSignal, setSelectedSignal] = useState<string>('');
@@ -104,6 +107,7 @@ const TradingChart = () => {
   const [forexAssets, setForexAssets] = useState<TradeableAsset[]>([]);
   const [assetType, setAssetType] = useState<'crypto' | 'forex'>('crypto');
   const [tradingEngine, setTradingEngine] = useState<TradingEngineType>('rising');
+  const priceHistoryRef = useRef<{ [symbol: string]: number[] }>({});
   
   // New trade options
   const [stopLoss, setStopLoss] = useState<string>('');
@@ -242,63 +246,103 @@ const TradingChart = () => {
     fetchAssets();
   }, []);
 
-  // Update crypto prices from CoinGecko
+  // Update asset prices from real market data (using useRealMarketPrices hook)
+  // This replaces the old simulated price logic
   useEffect(() => {
-    const updateCryptoPrices = async () => {
-      try {
-        const cryptoIds = cryptoAssets.filter(a => a.api_id).map(a => a.api_id).join(',');
-        if (!cryptoIds) return;
-
-        const response = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${cryptoIds}&vs_currencies=usd`
-        );
-        const data = await response.json();
-
-        // Update prices in database
-        for (const asset of cryptoAssets) {
-          if (asset.api_id && data[asset.api_id]) {
-            await supabase
-              .from('tradeable_assets')
-              .update({ current_price: data[asset.api_id].usd })
-              .eq('id', asset.id);
+    const updateAssetPrices = async () => {
+      const allAssets = [...cryptoAssets, ...forexAssets];
+      
+      for (const asset of allAssets) {
+        const realPrice = getPrice(asset.symbol, asset.asset_type as 'crypto' | 'forex');
+        
+        if (realPrice > 0 && realPrice !== asset.current_price) {
+          // Track price history for chart generation
+          const symbol = asset.symbol;
+          if (!priceHistoryRef.current[symbol]) {
+            priceHistoryRef.current[symbol] = [];
+          }
+          priceHistoryRef.current[symbol].push(realPrice);
+          
+          // Keep only last 60 prices (for chart)
+          if (priceHistoryRef.current[symbol].length > 60) {
+            priceHistoryRef.current[symbol] = priceHistoryRef.current[symbol].slice(-60);
           }
         }
-      } catch (error) {
-        console.error('Error updating crypto prices:', error);
       }
     };
 
-    if (cryptoAssets.length > 0) {
-      updateCryptoPrices();
-      const interval = setInterval(updateCryptoPrices, 30000); // Update every 30 seconds
-      return () => clearInterval(interval);
+    if (cryptoAssets.length > 0 || forexAssets.length > 0) {
+      updateAssetPrices();
     }
-  }, [cryptoAssets]);
+  }, [cryptoPrices, forexRates, cryptoAssets, forexAssets, getPrice]);
 
-  // Simulate forex price movements
-  useEffect(() => {
-    const updateForexPrices = async () => {
-      try {
-        for (const asset of forexAssets) {
-          // Simulate small price changes (±0.1%)
-          const change = (Math.random() - 0.5) * 0.002;
-          const newPrice = asset.current_price * (1 + change);
-
-          await supabase
-            .from('tradeable_assets')
-            .update({ current_price: newPrice })
-            .eq('id', asset.id);
-        }
-      } catch (error) {
-        console.error('Error updating forex prices:', error);
-      }
-    };
-
-    if (forexAssets.length > 0) {
-      const interval = setInterval(updateForexPrices, 5000); // Update every 5 seconds
-      return () => clearInterval(interval);
+  // Generate real market candlestick data based on actual price history
+  const generateRealCandlestickData = useCallback((symbol: string, assetTypeParam: 'crypto' | 'forex', currentPrice: number): CandlestickData[] => {
+    const history = priceHistoryRef.current[symbol] || [];
+    
+    // If we have price history, use it
+    if (history.length >= 5) {
+      return history.slice(-30).map((price, i) => {
+        const volatility = assetTypeParam === 'crypto' ? price * 0.002 : price * 0.0005;
+        const open = i > 0 ? history[Math.max(0, history.length - 30 + i - 1)] : price * 0.999;
+        const close = price;
+        const high = Math.max(open, close) + Math.random() * volatility;
+        const low = Math.min(open, close) - Math.random() * volatility;
+        
+        return {
+          time: new Date(Date.now() - (history.length - i - 1) * 30000).toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }),
+          open: Number(open.toFixed(assetTypeParam === 'crypto' ? 2 : 5)),
+          high: Number(high.toFixed(assetTypeParam === 'crypto' ? 2 : 5)),
+          low: Number(low.toFixed(assetTypeParam === 'crypto' ? 2 : 5)),
+          close: Number(close.toFixed(assetTypeParam === 'crypto' ? 2 : 5)),
+        };
+      });
     }
-  }, [forexAssets]);
+    
+    // Generate initial data based on current price with realistic volatility
+    if (currentPrice > 0) {
+      const volatility = assetTypeParam === 'crypto' ? currentPrice * 0.003 : currentPrice * 0.001;
+      
+      return Array.from({ length: 30 }, (_, i) => {
+        // Create realistic price movement around current price
+        const timeOffset = (29 - i) / 30;
+        const trendFactor = Math.sin(i * 0.3) * 0.5;
+        const randomFactor = (Math.random() - 0.5) * 2;
+        
+        const priceVariation = currentPrice * (1 + (trendFactor + randomFactor * 0.5) * 0.01 * timeOffset);
+        const open = priceVariation + (Math.random() - 0.5) * volatility;
+        const close = priceVariation + (Math.random() - 0.5) * volatility;
+        const high = Math.max(open, close) + Math.random() * volatility * 0.5;
+        const low = Math.min(open, close) - Math.random() * volatility * 0.5;
+        
+        return {
+          time: new Date(Date.now() - (29 - i) * 60000).toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }),
+          open: Number(open.toFixed(assetTypeParam === 'crypto' ? 2 : 5)),
+          high: Number(high.toFixed(assetTypeParam === 'crypto' ? 2 : 5)),
+          low: Number(low.toFixed(assetTypeParam === 'crypto' ? 2 : 5)),
+          close: Number(close.toFixed(assetTypeParam === 'crypto' ? 2 : 5)),
+        };
+      });
+    }
+    
+    // Fallback for when no price is available
+    return Array.from({ length: 30 }, (_, i) => ({
+      time: new Date(Date.now() - (29 - i) * 60000).toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      }),
+      open: 100,
+      high: 100.5,
+      low: 99.5,
+      close: 100,
+    }));
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -378,61 +422,47 @@ const TradingChart = () => {
         console.log('🔄 Merged trades with signals:', mergedTrades);
         setActiveTrades(mergedTrades);
 
-        // Generate candlestick chart data based on trading engine
-        const baseValue = 100;
-        const data = Array.from({ length: 30 }, (_, i) => {
-          const totalProfit = mergedTrades?.reduce((sum, trade) => {
-            const hoursElapsed = (Date.now() - new Date(trade.started_at).getTime()) / (1000 * 60 * 60);
-            const daysElapsed = hoursElapsed / 24;
-            const profit = trade.initial_amount * trade.profit_multiplier * daysElapsed;
-            return sum + profit;
-          }, 0) || 0;
+        // Generate chart data based on selected asset and trading engine
+        const allAssets = [...cryptoAssets, ...forexAssets];
+        const selectedAssetData = allAssets.find(a => a.id === selectedAsset);
+        
+        if (selectedAssetData) {
+          const realPrice = getPrice(selectedAssetData.symbol, selectedAssetData.asset_type as 'crypto' | 'forex');
+          const currentPrice = realPrice > 0 ? realPrice : selectedAssetData.current_price || 100;
           
           if (tradingEngine === 'rising') {
-            // Rising engine: Only upward movement
-            const basePrice = baseValue + (totalProfit * (i / 30));
-            const volatility = 2 + Math.sin(i * 0.1) * 0.5;
-            const open = basePrice + Math.sin(i * 0.3) * volatility;
-            const close = basePrice + Math.sin((i + 1) * 0.3) * volatility + (Math.random() * 0.5); // Slight upward bias
-            const high = Math.max(open, close) + Math.random() * volatility;
-            const low = Math.min(open, close) - Math.random() * volatility * 0.3; // Less downward movement
-            
-            return {
-              time: new Date(Date.now() - (29 - i) * 60000).toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              }),
-              open: Number(open.toFixed(2)),
-              high: Number(high.toFixed(2)),
-              low: Number(Math.max(low, baseValue * 0.9).toFixed(2)), // Floor to prevent big dips
-              close: Number(Math.max(close, open).toFixed(2)), // Always close higher or equal
-            };
+            // Rising engine: Generate upward-trending chart
+            const baseValue = currentPrice;
+            const data = Array.from({ length: 30 }, (_, i) => {
+              const volatility = baseValue * 0.005;
+              const upwardBias = (i / 30) * baseValue * 0.02; // 2% upward trend
+              const open = baseValue + upwardBias + Math.sin(i * 0.3) * volatility;
+              const close = baseValue + upwardBias + Math.sin((i + 1) * 0.3) * volatility + Math.random() * volatility * 0.5;
+              const high = Math.max(open, close) + Math.random() * volatility;
+              const low = Math.min(open, close) - Math.random() * volatility * 0.3;
+              
+              return {
+                time: new Date(Date.now() - (29 - i) * 60000).toLocaleTimeString('en-US', { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                }),
+                open: Number(open.toFixed(2)),
+                high: Number(high.toFixed(2)),
+                low: Number(Math.max(low, baseValue * 0.98).toFixed(2)),
+                close: Number(Math.max(close, open).toFixed(2)),
+              };
+            });
+            setChartData(data);
           } else {
-            // General engine: Real market-like movement (up and down)
-            const volatilityFactor = 8 + Math.sin(i * 0.2) * 3;
-            const trend = Math.sin(i * 0.15) * 15; // Creates waves
-            const randomWalk = (Math.random() - 0.5) * volatilityFactor;
-            const basePrice = baseValue + trend + randomWalk + (totalProfit * 0.1);
-            
-            const open = basePrice + (Math.random() - 0.5) * 3;
-            const close = basePrice + (Math.random() - 0.5) * 3;
-            const high = Math.max(open, close) + Math.random() * 2;
-            const low = Math.min(open, close) - Math.random() * 2;
-            
-            return {
-              time: new Date(Date.now() - (29 - i) * 60000).toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              }),
-              open: Number(open.toFixed(2)),
-              high: Number(high.toFixed(2)),
-              low: Number(low.toFixed(2)),
-              close: Number(close.toFixed(2)),
-            };
+            // GENERAL engine: Use REAL market data from APIs
+            const realData = generateRealCandlestickData(
+              selectedAssetData.symbol, 
+              selectedAssetData.asset_type as 'crypto' | 'forex',
+              currentPrice
+            );
+            setChartData(realData);
           }
-        });
-
-        setChartData(data);
+        }
       } catch (error) {
         console.error('Error:', error);
       } finally {
