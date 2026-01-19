@@ -1133,9 +1133,10 @@ const TradingChart = () => {
                           });
                           
                           if (error) {
+                            console.error('stop_single_trade error:', error);
                             toast({
                               title: "Error",
-                              description: "Failed to stop trade",
+                              description: error.message || "Failed to stop trade",
                               variant: "destructive"
                             });
                           } else {

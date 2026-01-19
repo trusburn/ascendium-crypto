@@ -104,50 +104,31 @@ const Dashboard = () => {
     setStoppingTrades(true);
     try {
       console.log('🛑 Stopping trades via database function...');
+
       const { data: result, error: rpcError } = await supabase.rpc('stop_all_user_trades', {
-        p_user_id: user.id
+        p_user_id: user.id,
       });
 
       if (rpcError) throw rpcError;
 
-      const resultData = result as {
-        success: boolean;
-        message: string;
-        trades_stopped: number;
-        total_profit: number;
-        trade_details: Array<{
-          id: string;
-          trade_type: string;
-          initial_amount: number;
-          profit: number;
-          entry_price: number;
-          exit_price: number;
-          asset_symbol: string;
-          asset_name: string;
-          started_at: string;
-          stopped_at: string;
-        }>;
+      // Current DB function returns: { trades_closed, total_returned, total_profit }
+      const resultData = (result || {}) as {
+        trades_closed?: number;
+        total_returned?: number;
+        total_profit?: number;
       };
+
+      const tradesClosed = Number(resultData.trades_closed ?? 0);
+      const totalProfit = Number(resultData.total_profit ?? 0);
 
       console.log('📊 Stop result:', resultData);
 
-      if (!resultData.success) {
+      if (tradesClosed <= 0) {
         toast({
           title: "No Active Trades",
-          description: resultData.message,
+          description: "You have no active trades to stop",
         });
         return;
-      }
-
-      if (resultData.trade_details && resultData.trade_details.length > 0) {
-        const transactionInserts = resultData.trade_details.map(trade => ({
-          user_id: user.id,
-          type: trade.profit >= 0 ? 'trade_profit' : 'trade_loss',
-          amount: trade.profit,
-          description: `${trade.trade_type.toUpperCase()} ${trade.asset_symbol} | Invested: $${trade.initial_amount.toFixed(2)} | ${trade.profit >= 0 ? 'Profit' : 'Loss'}: $${Math.abs(trade.profit).toFixed(2)}`,
-        }));
-
-        await supabase.from('transactions').insert(transactionInserts);
       }
 
       const { data: updatedProfile } = await supabase
@@ -162,7 +143,7 @@ const Dashboard = () => {
 
       toast({
         title: "Trading Stopped Successfully",
-        description: `Stopped ${resultData.trades_stopped} trade(s). Total profit: $${resultData.total_profit.toFixed(2)} added to your balance.`,
+        description: `Stopped ${tradesClosed} trade(s). Net P/L: $${totalProfit.toFixed(2)}.`,
       });
 
       setActiveTrades([]);
@@ -170,7 +151,7 @@ const Dashboard = () => {
       console.error('Stop trades error:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to stop trades",
+        description: error?.message || "Failed to stop trades",
         variant: "destructive",
       });
     } finally {
