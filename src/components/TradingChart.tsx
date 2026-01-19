@@ -87,7 +87,7 @@ const DURATION_OPTIONS: { value: DurationType; label: string }[] = [
 
 const TradingChart = () => {
   const { user } = useAuth();
-  const { cryptoPrices, forexRates, getPrice, lastUpdate, refetch: refetchPrices } = useRealMarketPrices();
+  const { cryptoPrices, forexRates, getPrice, lastUpdate, syncStatus, refetch: refetchPrices, syncPrices } = useRealMarketPrices();
   const [purchasedSignals, setPurchasedSignals] = useState<PurchasedSignal[]>([]);
   const [activeTrades, setActiveTrades] = useState<ActiveTrade[]>([]);
   const [selectedSignal, setSelectedSignal] = useState<string>('');
@@ -472,18 +472,22 @@ const TradingChart = () => {
 
     fetchData();
     
-    // Update profits via DATABASE function every 2 seconds (no frontend calculations)
+    // Update profits via DATABASE function every 5 seconds
+    // Edge function syncs prices to DB, then RPC recalculates profits
     const interval = setInterval(async () => {
       if (activeTrades.length === 0) return;
       
-      console.log('🔄 Syncing profits from database...');
+      console.log('🔄 Syncing prices and profits...');
       try {
-        // Call database function to calculate and sync all profits
+        // First sync prices to database via edge function (bypasses RLS)
+        await syncPrices();
+        
+        // Then call database function to recalculate all profits
         const { error: syncError } = await supabase.rpc('update_live_interest_earned');
         if (syncError) {
-          console.error('❌ Sync error:', syncError);
+          console.error('❌ Profit sync error:', syncError);
         } else {
-          console.log('✅ Database profits synced');
+          console.log('✅ Profits synced');
         }
         
         // Refresh trades data to get updated current_profit values from DB
@@ -510,9 +514,9 @@ const TradingChart = () => {
       } catch (error) {
         console.error('💥 Sync interval error:', error);
       }
-    }, 2000);
+    }, 5000);
     return () => clearInterval(interval);
-  }, [user, tradingEngine, activeTrades.length]);
+  }, [user, tradingEngine, activeTrades.length, syncPrices]);
 
   const handleTrade = async (type: 'buy' | 'sell') => {
     if (!user) {
@@ -582,7 +586,12 @@ const TradingChart = () => {
     }
 
     try {
-      // Get current asset price
+      // CRITICAL: Sync prices to database BEFORE starting trade
+      // This ensures entry_price is accurate and up-to-date
+      console.log('🔄 Syncing market prices before trade...');
+      await syncPrices();
+      
+      // Get current asset price (now freshly synced)
       const { data: assetData, error: assetError } = await supabase
         .from('tradeable_assets')
         .select('current_price, symbol')
@@ -599,6 +608,15 @@ const TradingChart = () => {
       }
 
       const entryPrice = assetData.current_price;
+      
+      if (!entryPrice || entryPrice <= 0) {
+        toast({
+          title: "Error",
+          description: "Market price not available. Please try again in a moment.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       // Use the atomic start_trade_validated RPC function
       // This handles balance deduction + trade creation atomically

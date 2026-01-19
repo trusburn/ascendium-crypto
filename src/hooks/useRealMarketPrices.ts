@@ -29,7 +29,7 @@ const CRYPTO_ID_MAP: { [key: string]: string } = {
   'ATOM': 'cosmos',
 };
 
-// Base prices for forex pairs (used as fallback and for calculating pair prices)
+// Base prices for forex pairs (used as fallback)
 const FOREX_BASE_PRICES: { [key: string]: number } = {
   'EUR/USD': 1.0850,
   'GBP/USD': 1.2650,
@@ -53,7 +53,58 @@ export const useRealMarketPrices = () => {
   const [forexRates, setForexRates] = useState<PriceData>({});
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error'>('idle');
+  const isSyncingRef = useRef(false);
   const forexBaseRatesRef = useRef<{ [key: string]: number }>({});
+
+  // Call the edge function to sync prices to database (uses service role, bypasses RLS)
+  const syncPricesToDatabase = useCallback(async () => {
+    if (isSyncingRef.current) {
+      console.log('⏳ Price sync already in progress, skipping...');
+      return false;
+    }
+    
+    isSyncingRef.current = true;
+    setSyncStatus('syncing');
+    
+    try {
+      console.log('📊 Calling sync-market-prices edge function...');
+      
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      
+      if (!token) {
+        console.warn('No auth token available for price sync');
+        setSyncStatus('error');
+        isSyncingRef.current = false;
+        return false;
+      }
+
+      const response = await supabase.functions.invoke('sync-market-prices', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.error) {
+        console.error('❌ Price sync error:', response.error);
+        setSyncStatus('error');
+        isSyncingRef.current = false;
+        return false;
+      }
+
+      console.log('✅ Price sync successful:', response.data);
+      setSyncStatus('success');
+      setLastUpdate(new Date());
+      isSyncingRef.current = false;
+      return true;
+    } catch (error) {
+      console.error('❌ Price sync failed:', error);
+      setSyncStatus('error');
+      isSyncingRef.current = false;
+      return false;
+    }
+  }, []);
 
   // Fetch crypto prices from CoinGecko (free, no API key needed)
   const fetchCryptoPrices = useCallback(async () => {
@@ -141,52 +192,14 @@ export const useRealMarketPrices = () => {
     }
   }, []);
 
-  // Update prices in the database
-  const updateDatabasePrices = useCallback(async (crypto: PriceData, forex: PriceData) => {
-    try {
-      // Fetch all tradeable assets
-      const { data: assets, error } = await supabase
-        .from('tradeable_assets')
-        .select('id, symbol, asset_type');
-      
-      if (error) {
-        console.error('Error fetching assets:', error);
-        return;
-      }
-      
-      // Update each asset with real price
-      for (const asset of assets || []) {
-        let newPrice: number | null = null;
-        
-        if (asset.asset_type === 'crypto') {
-          // Extract base symbol (e.g., "BTC/USDT" -> "BTC")
-          const baseSymbol = asset.symbol.split('/')[0];
-          newPrice = crypto[baseSymbol];
-        } else if (asset.asset_type === 'forex') {
-          newPrice = forex[asset.symbol];
-        }
-        
-        if (newPrice && newPrice > 0) {
-          await supabase
-            .from('tradeable_assets')
-            .update({ 
-              current_price: newPrice,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', asset.id);
-        }
-      }
-      
-      console.log('✅ Database prices updated with real market data');
-    } catch (error) {
-      console.error('Error updating database prices:', error);
-    }
-  }, []);
-
-  // Main fetch function
+  // Main fetch function - syncs prices via edge function (bypasses RLS)
   const fetchAllPrices = useCallback(async () => {
     console.log('📊 Fetching real market prices...');
     
+    // First, sync prices to database via edge function (uses service role)
+    await syncPricesToDatabase();
+    
+    // Also fetch for local state (for UI responsiveness)
     const [crypto, forex] = await Promise.all([
       fetchCryptoPrices(),
       fetchForexRates()
@@ -203,24 +216,15 @@ export const useRealMarketPrices = () => {
       setForexRates(FOREX_BASE_PRICES);
     }
     
-    // Update database with real prices
-    if (crypto || forex) {
-      await updateDatabasePrices(
-        crypto || {},
-        forex || FOREX_BASE_PRICES
-      );
-    }
-    
-    setLastUpdate(new Date());
     setLoading(false);
-  }, [fetchCryptoPrices, fetchForexRates, updateDatabasePrices]);
+  }, [fetchCryptoPrices, fetchForexRates, syncPricesToDatabase]);
 
   // Initial fetch and interval
   useEffect(() => {
     fetchAllPrices();
     
-    // Refresh every 30 seconds for crypto, forex rates update less frequently
-    const interval = setInterval(fetchAllPrices, 30000);
+    // Refresh every 15 seconds for real-time trading feel
+    const interval = setInterval(fetchAllPrices, 15000);
     
     return () => clearInterval(interval);
   }, [fetchAllPrices]);
@@ -240,8 +244,10 @@ export const useRealMarketPrices = () => {
     forexRates,
     loading,
     lastUpdate,
+    syncStatus,
     getPrice,
     refetch: fetchAllPrices,
+    syncPrices: syncPricesToDatabase,
   };
 };
 
