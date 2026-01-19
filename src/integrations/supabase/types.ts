@@ -323,6 +323,7 @@ export type Database = {
           profit_multiplier: number
           purchased_signal_id: string | null
           signal_id: string | null
+          source_balance: string | null
           started_at: string
           status: string
           stop_loss: number | null
@@ -347,6 +348,7 @@ export type Database = {
           profit_multiplier?: number
           purchased_signal_id?: string | null
           signal_id?: string | null
+          source_balance?: string | null
           started_at?: string
           status?: string
           stop_loss?: number | null
@@ -371,6 +373,7 @@ export type Database = {
           profit_multiplier?: number
           purchased_signal_id?: string | null
           signal_id?: string | null
+          source_balance?: string | null
           started_at?: string
           status?: string
           stop_loss?: number | null
