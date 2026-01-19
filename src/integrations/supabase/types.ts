@@ -310,10 +310,12 @@ export type Database = {
       trades: {
         Row: {
           asset_id: string | null
+          closed_at: string | null
           current_price: number | null
           current_profit: number
           duration_type: string | null
           entry_price: number | null
+          exit_price: number | null
           expires_at: string | null
           id: string
           initial_amount: number
@@ -335,10 +337,12 @@ export type Database = {
         }
         Insert: {
           asset_id?: string | null
+          closed_at?: string | null
           current_price?: number | null
           current_profit?: number
           duration_type?: string | null
           entry_price?: number | null
+          exit_price?: number | null
           expires_at?: string | null
           id?: string
           initial_amount?: number
@@ -360,10 +364,12 @@ export type Database = {
         }
         Update: {
           asset_id?: string | null
+          closed_at?: string | null
           current_price?: number | null
           current_profit?: number
           duration_type?: string | null
           entry_price?: number | null
+          exit_price?: number | null
           expires_at?: string | null
           id?: string
           initial_amount?: number
