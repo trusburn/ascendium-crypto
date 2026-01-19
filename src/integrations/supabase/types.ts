@@ -605,7 +605,7 @@ export type Database = {
       stop_all_user_trades: { Args: { p_user_id: string }; Returns: Json }
       stop_single_trade: {
         Args: { p_trade_id: string; p_user_id: string }
-        Returns: Json
+        Returns: boolean
       }
       swap_balances: {
         Args: {
