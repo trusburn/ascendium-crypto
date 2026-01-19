@@ -6,13 +6,14 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { TrendingUp, TrendingDown, Activity, DollarSign, Bitcoin, DollarSign as Forex, Wallet, Square, Clock, Target, ShieldAlert, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, Activity, DollarSign, Bitcoin, DollarSign as Forex, Wallet, Square, Clock, Target, ShieldAlert, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useRealMarketPrices, CRYPTO_ID_MAP, FOREX_BASE_PRICES } from '@/hooks/useRealMarketPrices';
 import { useRealOHLCData } from '@/hooks/useRealOHLCData';
+import { useWebSocketPrices, useWebSocketKlines, BINANCE_SYMBOL_MAP } from '@/hooks/useWebSocketPrices';
 
 interface PurchasedSignal {
   id: string;
@@ -120,8 +121,20 @@ const TradingChart = () => {
   const allAssets = [...cryptoAssets, ...forexAssets];
   const selectedAssetData = allAssets.find(a => a.id === selectedAsset);
   const selectedSymbol = selectedAssetData?.symbol || 'BTC';
+  // Extract base symbol (e.g., "BTC" from "BTC/USD")
+  const baseSymbol = selectedSymbol.split('/')[0] || selectedSymbol;
   const selectedAssetType = (selectedAssetData?.asset_type as 'crypto' | 'forex') || 'crypto';
   const currentAssetPrice = selectedAssetData ? getPrice(selectedAssetData.symbol, selectedAssetType) : 0;
+
+  // WebSocket real-time price streaming for crypto (Binance)
+  const cryptoSymbols = cryptoAssets.map(a => a.symbol.split('/')[0]).filter(s => BINANCE_SYMBOL_MAP[s]);
+  const { prices: wsPrices, isConnected: wsConnected, error: wsError, reconnect: wsReconnect } = useWebSocketPrices(cryptoSymbols);
+  
+  // Real-time kline/candlestick streaming for the selected crypto asset
+  const { kline: liveKline, isConnected: klineConnected } = useWebSocketKlines(
+    selectedAssetType === 'crypto' ? baseSymbol : '',
+    '1m'
+  );
 
   // Use REAL OHLC data hook for General engine
   const { ohlcData: realOHLCData, isLoading: ohlcLoading, refetch: refetchOHLC } = useRealOHLCData(
@@ -360,6 +373,7 @@ const TradingChart = () => {
   }, []);
 
   // Effect to update chart data based on trading engine and real OHLC data
+  // Also integrates live WebSocket kline updates for real-time streaming
   useEffect(() => {
     if (!selectedAssetData) return;
     
@@ -406,6 +420,51 @@ const TradingChart = () => {
       }
     }
   }, [tradingEngine, selectedAssetData, realOHLCData, ohlcLoading, selectedSymbol, getPrice, generateRealCandlestickData]);
+
+  // Live WebSocket kline update - updates the last candle in real-time
+  useEffect(() => {
+    if (!liveKline || tradingEngine !== 'general' || selectedAssetType !== 'crypto') return;
+    
+    setChartData(prev => {
+      if (prev.length === 0) return prev;
+      
+      const newData = [...prev];
+      const lastCandle = newData[newData.length - 1];
+      
+      // Update the last candle with live WebSocket data
+      const updatedCandle = {
+        ...lastCandle,
+        close: liveKline.close,
+        high: Math.max(lastCandle.high, liveKline.high),
+        low: Math.min(lastCandle.low, liveKline.low),
+      };
+      
+      // If the kline is closed, add a new candle
+      if (liveKline.isClosed) {
+        console.log('📊 Kline closed, adding new candle');
+        newData[newData.length - 1] = updatedCandle;
+        // Add new candle for the next period
+        newData.push({
+          time: new Date(liveKline.time).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          open: liveKline.close,
+          high: liveKline.close,
+          low: liveKline.close,
+          close: liveKline.close,
+        });
+        // Keep only last 30 candles
+        if (newData.length > 30) {
+          newData.shift();
+        }
+      } else {
+        newData[newData.length - 1] = updatedCandle;
+      }
+      
+      return newData;
+    });
+  }, [liveKline, tradingEngine, selectedAssetType]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -858,23 +917,51 @@ const TradingChart = () => {
               })}
             </div>
 
-            {/* Price display */}
+            {/* Price display with WebSocket live price */}
             <div className="absolute top-4 left-4 bg-slate-900/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-700">
               <div className="text-2xl font-bold text-white">
-                ${chartData.length > 0 ? chartData[chartData.length - 1].close.toFixed(2) : '0.00'}
+                ${(() => {
+                  // Use WebSocket price for crypto if available
+                  if (selectedAssetType === 'crypto' && wsPrices[baseSymbol]) {
+                    return wsPrices[baseSymbol].price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                  }
+                  return chartData.length > 0 ? chartData[chartData.length - 1].close.toFixed(2) : '0.00';
+                })()}
               </div>
-              <div className="text-sm text-emerald-400 flex items-center">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                +{((totalProfit / 100) * 100).toFixed(2)}%
+              <div className={`text-sm flex items-center ${
+                wsPrices[baseSymbol]?.priceChangePercent >= 0 ? 'text-emerald-400' : 'text-red-400'
+              }`}>
+                {wsPrices[baseSymbol]?.priceChangePercent >= 0 ? (
+                  <TrendingUp className="w-3 h-3 mr-1" />
+                ) : (
+                  <TrendingDown className="w-3 h-3 mr-1" />
+                )}
+                {wsPrices[baseSymbol] ? (
+                  `${wsPrices[baseSymbol].priceChangePercent >= 0 ? '+' : ''}${wsPrices[baseSymbol].priceChangePercent.toFixed(2)}%`
+                ) : (
+                  `+${((totalProfit / 100) * 100).toFixed(2)}%`
+                )}
               </div>
             </div>
 
-            {/* Trading indicator */}
+            {/* WebSocket Connection Status & Trading indicator */}
             <div className="absolute top-4 right-20 bg-slate-900/90 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-700">
-              <div className="text-xs text-slate-400">LIVE</div>
+              <div className="text-xs text-slate-400 flex items-center gap-1">
+                {wsConnected ? (
+                  <>
+                    <Wifi className="w-3 h-3 text-emerald-400" />
+                    <span className="text-emerald-400">LIVE</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="w-3 h-3 text-yellow-400" />
+                    <span className="text-yellow-400">CONNECTING</span>
+                  </>
+                )}
+              </div>
               <div className="flex items-center">
-                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse mr-2"></div>
-                <span className="text-sm text-white">BTC/USD</span>
+                <div className={`w-2 h-2 rounded-full mr-2 ${wsConnected ? 'bg-emerald-500 animate-pulse' : 'bg-yellow-500'}`}></div>
+                <span className="text-sm text-white">{selectedSymbol}</span>
               </div>
             </div>
 
@@ -902,17 +989,34 @@ const TradingChart = () => {
               </TabsList>
               <TabsContent value="crypto" className="mt-4">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {cryptoAssets.map((asset) => (
-                    <Button
-                      key={asset.id}
-                      variant={selectedAsset === asset.id ? "default" : "outline"}
-                      onClick={() => setSelectedAsset(asset.id)}
-                      className="h-auto py-3 flex flex-col items-start"
-                    >
-                      <span className="font-bold text-sm">{asset.symbol}</span>
-                      <span className="text-xs text-muted-foreground">${asset.current_price.toLocaleString()}</span>
-                    </Button>
-                  ))}
+                  {cryptoAssets.map((asset) => {
+                    const assetBaseSymbol = asset.symbol.split('/')[0];
+                    const wsPrice = wsPrices[assetBaseSymbol];
+                    const displayPrice = wsPrice?.price || asset.current_price;
+                    const priceChange = wsPrice?.priceChangePercent;
+                    
+                    return (
+                      <Button
+                        key={asset.id}
+                        variant={selectedAsset === asset.id ? "default" : "outline"}
+                        onClick={() => setSelectedAsset(asset.id)}
+                        className="h-auto py-3 flex flex-col items-start relative overflow-hidden"
+                      >
+                        <span className="font-bold text-sm">{asset.symbol}</span>
+                        <span className="text-xs text-muted-foreground">
+                          ${displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        {priceChange !== undefined && (
+                          <span className={`text-[10px] ${priceChange >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {priceChange >= 0 ? '↑' : '↓'} {Math.abs(priceChange).toFixed(2)}%
+                          </span>
+                        )}
+                        {wsPrice && (
+                          <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                        )}
+                      </Button>
+                    );
+                  })}
                 </div>
               </TabsContent>
               <TabsContent value="forex" className="mt-4">
