@@ -1,25 +1,30 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, memo } from 'react';
 import * as THREE from 'three';
 
-export const Bitcoin3D = () => {
+export const Bitcoin3D = memo(() => {
   const mountRef = useRef<HTMLDivElement>(null);
+  const frameIdRef = useRef<number>(0);
 
   useEffect(() => {
     if (!mountRef.current) return;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, 400 / 400, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    const renderer = new THREE.WebGLRenderer({ 
+      alpha: true, 
+      antialias: true,
+      powerPreference: 'high-performance',
+    });
     
     renderer.setSize(400, 400);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio for performance
     renderer.setClearColor(0x000000, 0);
     mountRef.current.appendChild(renderer.domElement);
 
     // Create standing Bitcoin coin
-    const geometry = new THREE.CylinderGeometry(1.2, 1.2, 0.3, 64);
-    geometry.rotateX(0); // Keep it standing upright
+    const geometry = new THREE.CylinderGeometry(1.2, 1.2, 0.3, 32); // Reduced segments from 64 to 32
+    geometry.rotateX(0);
     
-    // Create material with crypto gold color and metallic appearance
     const material = new THREE.MeshPhongMaterial({
       color: 0xf7931e,
       shininess: 100,
@@ -34,22 +39,20 @@ export const Bitcoin3D = () => {
     // Add Bitcoin symbol on both sides
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d')!;
-    canvas.width = 512;
-    canvas.height = 512;
+    canvas.width = 256; // Reduced from 512 for performance
+    canvas.height = 256;
     
-    // Create gradient background
-    const gradient = context.createRadialGradient(256, 256, 0, 256, 256, 256);
+    const gradient = context.createRadialGradient(128, 128, 0, 128, 128, 128);
     gradient.addColorStop(0, '#f7931e');
     gradient.addColorStop(1, '#d4761a');
     context.fillStyle = gradient;
-    context.fillRect(0, 0, 512, 512);
+    context.fillRect(0, 0, 256, 256);
     
-    // Add Bitcoin symbol
     context.fillStyle = '#ffffff';
-    context.font = 'bold 380px Arial';
+    context.font = 'bold 190px Arial';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    context.fillText('₿', 256, 256);
+    context.fillText('₿', 128, 128);
     
     const texture = new THREE.CanvasTexture(canvas);
     const symbolMaterial = new THREE.MeshPhongMaterial({ 
@@ -58,13 +61,11 @@ export const Bitcoin3D = () => {
       opacity: 1,
     });
     
-    // Front face
-    const frontGeometry = new THREE.CylinderGeometry(1.21, 1.21, 0.31, 64);
+    const frontGeometry = new THREE.CylinderGeometry(1.21, 1.21, 0.31, 32);
     const frontSymbol = new THREE.Mesh(frontGeometry, symbolMaterial);
     scene.add(frontSymbol);
     
-    // Back face (rotated)
-    const backGeometry = new THREE.CylinderGeometry(1.21, 1.21, 0.31, 64);
+    const backGeometry = new THREE.CylinderGeometry(1.21, 1.21, 0.31, 32);
     const backSymbol = new THREE.Mesh(backGeometry, symbolMaterial);
     backSymbol.rotation.y = Math.PI;
     scene.add(backSymbol);
@@ -83,23 +84,33 @@ export const Bitcoin3D = () => {
 
     camera.position.z = 4;
 
-    // Animation - standing and rolling
-    const animate = () => {
-      requestAnimationFrame(animate);
+    // Throttled animation loop - target 30fps for smoother performance
+    let lastTime = 0;
+    const targetFPS = 30;
+    const frameInterval = 1000 / targetFPS;
+    
+    const animate = (currentTime: number) => {
+      frameIdRef.current = requestAnimationFrame(animate);
       
-      // Rolling rotation around Y-axis
-      bitcoin.rotation.y += 0.015;
-      frontSymbol.rotation.y += 0.015;
-      backSymbol.rotation.y += 0.015;
+      const deltaTime = currentTime - lastTime;
+      if (deltaTime < frameInterval) return;
       
-      // Gentle floating animation while standing
-      const floatOffset = Math.sin(Date.now() * 0.002) * 0.08;
+      lastTime = currentTime - (deltaTime % frameInterval);
+      
+      // Slower, smoother rotation
+      const rotationSpeed = 0.008;
+      bitcoin.rotation.y += rotationSpeed;
+      frontSymbol.rotation.y += rotationSpeed;
+      backSymbol.rotation.y += rotationSpeed;
+      
+      // Gentle floating animation
+      const floatOffset = Math.sin(currentTime * 0.001) * 0.06;
       bitcoin.position.y = floatOffset;
       frontSymbol.position.y = floatOffset;
       backSymbol.position.y = floatOffset;
       
-      // Subtle wobble for realism
-      const wobble = Math.sin(Date.now() * 0.003) * 0.02;
+      // Subtle wobble
+      const wobble = Math.sin(currentTime * 0.0015) * 0.015;
       bitcoin.rotation.z = wobble;
       frontSymbol.rotation.z = wobble;
       backSymbol.rotation.z = wobble;
@@ -107,10 +118,11 @@ export const Bitcoin3D = () => {
       renderer.render(scene, camera);
     };
 
-    animate();
+    frameIdRef.current = requestAnimationFrame(animate);
 
     // Cleanup
     return () => {
+      cancelAnimationFrame(frameIdRef.current);
       if (mountRef.current && renderer.domElement.parentNode === mountRef.current) {
         mountRef.current.removeChild(renderer.domElement);
       }
@@ -127,10 +139,12 @@ export const Bitcoin3D = () => {
   return (
     <div 
       ref={mountRef} 
-      className="flex items-center justify-center w-full max-w-[400px] h-[300px] sm:h-[400px] mx-auto"
+      className="flex items-center justify-center w-full max-w-[400px] h-[300px] sm:h-[400px] mx-auto gpu-accelerated"
       style={{
         filter: 'drop-shadow(0 0 20px rgba(247, 147, 30, 0.5))',
       }}
     />
   );
-};
+});
+
+Bitcoin3D.displayName = 'Bitcoin3D';

@@ -4,8 +4,29 @@ import { Bitcoin3D } from './Bitcoin3D';
 import { FluidBackground, ScrollReveal } from './animations';
 import { ArrowRight, TrendingUp, Shield, Zap, Play } from 'lucide-react';
 import { useAdminContent } from '@/hooks/useAdminContent';
+import { memo } from 'react';
 
-export const Hero = () => {
+// Memoized stat card for performance
+const StatCard = memo(({ value, label, color }: { value: string; label: string; color: string }) => (
+  <div className={`text-center p-4 rounded-xl bg-background/30 backdrop-blur-sm border border-border/30 hover:scale-105 transition-transform duration-300 hover:border-${color}/50`}>
+    <div className={`text-3xl font-bold text-${color}`}>{value}</div>
+    <div className="text-sm text-muted-foreground">{label}</div>
+  </div>
+));
+
+StatCard.displayName = 'StatCard';
+
+// Memoized feature item
+const FeatureItem = memo(({ icon: Icon, text, color }: { icon: typeof TrendingUp; text: string; color: string }) => (
+  <div className="flex items-center space-x-3 justify-center lg:justify-start hover:translate-x-1 transition-transform duration-200">
+    <Icon className={`h-6 w-6 ${color}`} />
+    <span className="text-sm text-foreground">{text}</span>
+  </div>
+));
+
+FeatureItem.displayName = 'FeatureItem';
+
+export const Hero = memo(() => {
   const { content } = useAdminContent();
   
   return (
@@ -21,15 +42,10 @@ export const Hero = () => {
           {/* Left Content */}
           <div className="text-center lg:text-left space-y-8">
             <ScrollReveal>
-              <motion.div 
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-crypto-blue/10 border border-crypto-blue/30 text-crypto-blue"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-crypto-blue/10 border border-crypto-blue/30 text-crypto-blue">
                 <div className="w-2 h-2 rounded-full bg-crypto-green animate-pulse" />
                 <span className="text-sm font-medium">Live Trading Active</span>
-              </motion.div>
+              </div>
             </ScrollReveal>
 
             <ScrollReveal delay={0.1}>
@@ -40,78 +56,57 @@ export const Hero = () => {
               </h1>
             </ScrollReveal>
 
-            <ScrollReveal delay={0.2}>
+            <ScrollReveal delay={0.15}>
               <p className="text-xl text-muted-foreground max-w-2xl">
                 {content.heroSubtitle || 'Your gateway to global markets. Trade cryptocurrencies and forex with AI-powered signals and professional tools.'}
               </p>
             </ScrollReveal>
 
             {/* Stats */}
-            <ScrollReveal delay={0.3}>
+            <ScrollReveal delay={0.2}>
               <div className="grid grid-cols-3 gap-6 py-8">
-                <motion.div 
-                  className="text-center p-4 rounded-xl bg-background/30 backdrop-blur-sm border border-border/30"
-                  whileHover={{ scale: 1.05, borderColor: 'hsl(var(--crypto-gold) / 0.5)' }}
-                >
-                  <div className="text-3xl font-bold text-crypto-gold">{content.statsTradingVolume || '$2.5B+'}</div>
-                  <div className="text-sm text-muted-foreground">{content.tradingVolumeLabel}</div>
-                </motion.div>
-                <motion.div 
-                  className="text-center p-4 rounded-xl bg-background/30 backdrop-blur-sm border border-border/30"
-                  whileHover={{ scale: 1.05, borderColor: 'hsl(var(--crypto-blue) / 0.5)' }}
-                >
-                  <div className="text-3xl font-bold text-crypto-blue">{content.statsActiveTraders || '150K+'}</div>
-                  <div className="text-sm text-muted-foreground">{content.activeUsersLabel}</div>
-                </motion.div>
-                <motion.div 
-                  className="text-center p-4 rounded-xl bg-background/30 backdrop-blur-sm border border-border/30"
-                  whileHover={{ scale: 1.05, borderColor: 'hsl(var(--crypto-green) / 0.5)' }}
-                >
-                  <div className="text-3xl font-bold text-crypto-green">{content.statsUptime || '99.9%'}</div>
-                  <div className="text-sm text-muted-foreground">{content.uptimeLabel}</div>
-                </motion.div>
+                <StatCard 
+                  value={content.statsTradingVolume || '$2.5B+'} 
+                  label={content.tradingVolumeLabel || 'Trading Volume'} 
+                  color="crypto-gold" 
+                />
+                <StatCard 
+                  value={content.statsActiveTraders || '150K+'} 
+                  label={content.activeUsersLabel || 'Active Traders'} 
+                  color="crypto-blue" 
+                />
+                <StatCard 
+                  value={content.statsUptime || '99.9%'} 
+                  label={content.uptimeLabel || 'Uptime'} 
+                  color="crypto-green" 
+                />
               </div>
             </ScrollReveal>
 
             {/* CTA Buttons */}
-            <ScrollReveal delay={0.4}>
+            <ScrollReveal delay={0.25}>
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <a href="/auth">
-                    <Button size="lg" className="bg-crypto-gradient hover:opacity-90 text-background group px-8">
-                      Start Investing
-                      <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                    </Button>
-                  </a>
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <a href="/dashboard">
-                    <Button size="lg" variant="outline" className="border-crypto-blue text-crypto-blue hover:bg-crypto-blue hover:text-background group px-8">
-                      <Play className="mr-2 h-4 w-4" />
-                      View Dashboard
-                    </Button>
-                  </a>
-                </motion.div>
+                <a href="/auth">
+                  <Button size="lg" className="bg-crypto-gradient hover:opacity-90 text-background group px-8 hover:scale-105 transition-transform duration-200">
+                    Start Investing
+                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </a>
+                <a href="/dashboard">
+                  <Button size="lg" variant="outline" className="border-crypto-blue text-crypto-blue hover:bg-crypto-blue hover:text-background group px-8 hover:scale-105 transition-transform duration-200">
+                    <Play className="mr-2 h-4 w-4" />
+                    View Dashboard
+                  </Button>
+                </a>
               </div>
             </ScrollReveal>
 
             {/* Features */}
-            <ScrollReveal delay={0.5}>
+            <ScrollReveal delay={0.3}>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-8">
-                {[
-                  { icon: TrendingUp, text: 'High Returns', color: 'text-crypto-green' },
-                  { icon: Shield, text: 'Secure Platform', color: 'text-crypto-blue' },
-                  { icon: Zap, text: 'Instant Trading', color: 'text-crypto-gold' },
-                ].map((feature, index) => (
-                  <motion.div
-                    key={index}
-                    className="flex items-center space-x-3 justify-center lg:justify-start"
-                    whileHover={{ x: 5 }}
-                  >
-                    <feature.icon className={`h-6 w-6 ${feature.color}`} />
-                    <span className="text-sm text-foreground">{feature.text}</span>
-                  </motion.div>
-                ))}
+                <FeatureItem icon={TrendingUp} text="High Returns" color="text-crypto-green" />
+                <FeatureItem icon={Shield} text="Secure Platform" color="text-crypto-blue" />
+                <FeatureItem icon={Zap} text="Instant Trading" color="text-crypto-gold" />
               </div>
             </ScrollReveal>
           </div>
@@ -120,63 +115,53 @@ export const Hero = () => {
           <ScrollReveal direction="right" className="flex justify-center lg:justify-end">
             <div className="relative">
               <Bitcoin3D />
-              {/* Floating elements */}
-              <motion.div 
-                className="absolute -top-4 -right-4"
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 3, repeat: Infinity }}
+              {/* Floating elements - CSS animations instead of Framer Motion */}
+              <div 
+                className="absolute -top-4 -right-4 animate-float-smooth"
+                style={{ animationDelay: '0s', animationDuration: '6s' }}
               >
                 <div className="bg-crypto-green/20 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-crypto-green border border-crypto-green/30 flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" />
                   +24.5%
                 </div>
-              </motion.div>
-              <motion.div 
-                className="absolute -bottom-4 -left-4"
-                animate={{ y: [0, 10, 0] }}
-                transition={{ duration: 4, repeat: Infinity, delay: 1 }}
+              </div>
+              <div 
+                className="absolute -bottom-4 -left-4 animate-float-smooth"
+                style={{ animationDelay: '2s', animationDuration: '8s' }}
               >
                 <div className="bg-crypto-blue/20 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-crypto-blue border border-crypto-blue/30">
                   € EUR/USD
                 </div>
-              </motion.div>
-              <motion.div 
-                className="absolute top-1/2 -right-8"
-                animate={{ y: [0, -15, 0] }}
-                transition={{ duration: 5, repeat: Infinity, delay: 2 }}
+              </div>
+              <div 
+                className="absolute top-1/2 -right-8 animate-float-smooth"
+                style={{ animationDelay: '4s', animationDuration: '7s' }}
               >
                 <div className="bg-crypto-purple/20 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-crypto-purple border border-crypto-purple/30">
                   £ GBP/USD
                 </div>
-              </motion.div>
-              <motion.div 
-                className="absolute bottom-1/3 -right-12"
-                animate={{ y: [0, 12, 0] }}
-                transition={{ duration: 6, repeat: Infinity, delay: 3 }}
+              </div>
+              <div 
+                className="absolute bottom-1/3 -right-12 animate-float-smooth"
+                style={{ animationDelay: '1s', animationDuration: '9s' }}
               >
                 <div className="bg-crypto-gold/20 backdrop-blur-sm rounded-full px-4 py-2 text-sm text-crypto-gold border border-crypto-gold/30">
                   ₿ BTC
                 </div>
-              </motion.div>
+              </div>
             </div>
           </ScrollReveal>
         </div>
       </div>
 
-      {/* Scroll indicator */}
-      <motion.div
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
-        animate={{ y: [0, 10, 0] }}
-        transition={{ duration: 2, repeat: Infinity }}
-      >
+      {/* Scroll indicator - CSS animation */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-float-smooth" style={{ animationDuration: '3s' }}>
         <div className="w-6 h-10 rounded-full border-2 border-muted-foreground/30 flex justify-center pt-2">
-          <motion.div
-            className="w-1.5 h-1.5 rounded-full bg-crypto-blue"
-            animate={{ y: [0, 12, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
+          <div className="w-1.5 h-1.5 rounded-full bg-crypto-blue animate-bounce" />
         </div>
-      </motion.div>
+      </div>
     </section>
   );
-};
+});
+
+Hero.displayName = 'Hero';
