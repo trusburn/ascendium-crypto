@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ReactNode } from 'react';
+import { ReactNode, memo } from 'react';
 
 interface ScrollRevealProps {
   children: ReactNode;
@@ -9,27 +9,28 @@ interface ScrollRevealProps {
   className?: string;
 }
 
-export const ScrollReveal = ({
+// Memoized ScrollReveal for better performance
+export const ScrollReveal = memo(({
   children,
   direction = 'up',
   delay = 0,
-  duration = 0.6,
+  duration = 0.5,
   className = '',
 }: ScrollRevealProps) => {
   const getInitialPosition = () => {
     switch (direction) {
       case 'up':
-        return { opacity: 0, y: 60 };
+        return { opacity: 0, y: 30 }; // Reduced from 60 for smoother animation
       case 'down':
-        return { opacity: 0, y: -60 };
+        return { opacity: 0, y: -30 };
       case 'left':
-        return { opacity: 0, x: 60 };
+        return { opacity: 0, x: 30 };
       case 'right':
-        return { opacity: 0, x: -60 };
+        return { opacity: 0, x: -30 };
       case 'fade':
         return { opacity: 0 };
       default:
-        return { opacity: 0, y: 60 };
+        return { opacity: 0, y: 30 };
     }
   };
 
@@ -53,14 +54,16 @@ export const ScrollReveal = ({
       className={className}
       initial={getInitialPosition()}
       whileInView={getFinalPosition()}
-      viewport={{ once: true, margin: '-100px' }}
+      viewport={{ once: true, margin: '-50px', amount: 0.1 }}
       transition={{
         duration,
         delay,
-        ease: [0.25, 0.1, 0.25, 1],
+        ease: 'easeOut',
       }}
     >
       {children}
     </motion.div>
   );
-};
+});
+
+ScrollReveal.displayName = 'ScrollReveal';

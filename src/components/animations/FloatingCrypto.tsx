@@ -1,5 +1,4 @@
-import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { memo, useMemo } from 'react';
 
 interface CryptoSymbol {
   id: number;
@@ -12,59 +11,50 @@ interface CryptoSymbol {
   opacity: number;
 }
 
-const cryptoSymbols = ['₿', 'Ξ', '◈', '◆', '⟐', '$', '€', '£', '¥'];
+const cryptoSymbols = ['₿', 'Ξ', '◈', '◆', '$', '€', '£', '¥'];
 
-export const FloatingCrypto = () => {
-  const [symbols, setSymbols] = useState<CryptoSymbol[]>([]);
-
-  useEffect(() => {
-    const generateSymbols = () => {
-      const newSymbols: CryptoSymbol[] = [];
-      for (let i = 0; i < 15; i++) {
-        newSymbols.push({
-          id: i,
-          symbol: cryptoSymbols[Math.floor(Math.random() * cryptoSymbols.length)],
-          x: Math.random() * 100,
-          y: Math.random() * 100,
-          size: Math.random() * 24 + 16,
-          duration: Math.random() * 10 + 15,
-          delay: Math.random() * 5,
-          opacity: Math.random() * 0.15 + 0.05,
-        });
-      }
-      setSymbols(newSymbols);
-    };
-
-    generateSymbols();
+// Memoized floating crypto component for performance
+export const FloatingCrypto = memo(() => {
+  // Generate symbols only once with useMemo - reduced count for performance
+  const symbols = useMemo<CryptoSymbol[]>(() => {
+    const newSymbols: CryptoSymbol[] = [];
+    // Reduced from 15 to 8 symbols for better performance
+    for (let i = 0; i < 8; i++) {
+      newSymbols.push({
+        id: i,
+        symbol: cryptoSymbols[i % cryptoSymbols.length],
+        x: 10 + (i * 12) % 80, // Spread evenly
+        y: 10 + (i * 15) % 80,
+        size: 18 + (i % 3) * 6, // 18, 24, 30
+        duration: 20 + i * 3, // Slower animations
+        delay: i * 0.5,
+        opacity: 0.06 + (i % 3) * 0.03,
+      });
+    }
+    return newSymbols;
   }, []);
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
       {symbols.map((item) => (
-        <motion.div
+        <div
           key={item.id}
-          className="absolute text-crypto-blue select-none"
+          className="absolute text-crypto-blue select-none animate-float-smooth"
           style={{
             left: `${item.x}%`,
             top: `${item.y}%`,
             fontSize: `${item.size}px`,
             opacity: item.opacity,
-          }}
-          animate={{
-            y: [0, -30, 0, 30, 0],
-            x: [0, 15, 0, -15, 0],
-            rotate: [0, 10, 0, -10, 0],
-          }}
-          transition={{
-            duration: item.duration,
-            delay: item.delay,
-            repeat: Infinity,
-            ease: 'easeInOut',
+            animationDuration: `${item.duration}s`,
+            animationDelay: `${item.delay}s`,
+            willChange: 'transform',
           }}
         >
           {item.symbol}
-        </motion.div>
+        </div>
       ))}
     </div>
   );
-};
+});
+
+FloatingCrypto.displayName = 'FloatingCrypto';
