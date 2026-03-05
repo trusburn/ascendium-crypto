@@ -126,11 +126,23 @@ export const Bitcoin3D = memo(() => {
 
     frameIdRef.current = requestAnimationFrame(animate);
 
+    // Responsive resize handler
+    const handleResize = () => {
+      if (!container) return;
+      const w = container.clientWidth || 300;
+      const h = container.clientHeight || 300;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+    window.addEventListener('resize', handleResize);
+
     // Cleanup
     return () => {
       cancelAnimationFrame(frameIdRef.current);
-      if (mountRef.current && renderer.domElement.parentNode === mountRef.current) {
-        mountRef.current.removeChild(renderer.domElement);
+      window.removeEventListener('resize', handleResize);
+      if (container && renderer.domElement.parentNode === container) {
+        container.removeChild(renderer.domElement);
       }
       geometry.dispose();
       frontGeometry.dispose();
