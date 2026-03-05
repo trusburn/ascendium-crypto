@@ -9,21 +9,25 @@ export const Bitcoin3D = memo(() => {
     if (!mountRef.current) return;
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, 400 / 400, 0.1, 1000);
+    const container = mountRef.current;
+    const width = container.clientWidth || 300;
+    const height = container.clientHeight || 300;
+    
+    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ 
       alpha: true, 
       antialias: true,
       powerPreference: 'high-performance',
     });
     
-    renderer.setSize(400, 400);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio for performance
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 0);
-    mountRef.current.appendChild(renderer.domElement);
+    container.appendChild(renderer.domElement);
 
-    // Create standing Bitcoin coin
-    const geometry = new THREE.CylinderGeometry(1.2, 1.2, 0.3, 32); // Reduced segments from 64 to 32
-    geometry.rotateX(0);
+    // Create VERTICAL standing Bitcoin coin (rotate X by 90° so it stands upright)
+    const geometry = new THREE.CylinderGeometry(1.2, 1.2, 0.3, 32);
+    geometry.rotateX(Math.PI / 2); // Stand the coin upright
     
     const material = new THREE.MeshPhongMaterial({
       color: 0xf7931e,
@@ -62,10 +66,12 @@ export const Bitcoin3D = memo(() => {
     });
     
     const frontGeometry = new THREE.CylinderGeometry(1.21, 1.21, 0.31, 32);
+    frontGeometry.rotateX(Math.PI / 2);
     const frontSymbol = new THREE.Mesh(frontGeometry, symbolMaterial);
     scene.add(frontSymbol);
     
     const backGeometry = new THREE.CylinderGeometry(1.21, 1.21, 0.31, 32);
+    backGeometry.rotateX(Math.PI / 2);
     const backSymbol = new THREE.Mesh(backGeometry, symbolMaterial);
     backSymbol.rotation.y = Math.PI;
     scene.add(backSymbol);
@@ -120,11 +126,23 @@ export const Bitcoin3D = memo(() => {
 
     frameIdRef.current = requestAnimationFrame(animate);
 
+    // Responsive resize handler
+    const handleResize = () => {
+      if (!container) return;
+      const w = container.clientWidth || 300;
+      const h = container.clientHeight || 300;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+    window.addEventListener('resize', handleResize);
+
     // Cleanup
     return () => {
       cancelAnimationFrame(frameIdRef.current);
-      if (mountRef.current && renderer.domElement.parentNode === mountRef.current) {
-        mountRef.current.removeChild(renderer.domElement);
+      window.removeEventListener('resize', handleResize);
+      if (container && renderer.domElement.parentNode === container) {
+        container.removeChild(renderer.domElement);
       }
       geometry.dispose();
       frontGeometry.dispose();
@@ -139,9 +157,10 @@ export const Bitcoin3D = memo(() => {
   return (
     <div 
       ref={mountRef} 
-      className="flex items-center justify-center w-full max-w-[400px] h-[300px] sm:h-[400px] mx-auto gpu-accelerated"
+      className="flex items-center justify-center w-full h-[250px] sm:h-[300px] md:h-[350px] lg:h-[400px] mx-auto gpu-accelerated"
       style={{
         filter: 'drop-shadow(0 0 20px rgba(247, 147, 30, 0.5))',
+        maxWidth: '100%',
       }}
     />
   );
