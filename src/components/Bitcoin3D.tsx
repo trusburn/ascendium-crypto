@@ -66,10 +66,12 @@ export const Bitcoin3D = memo(() => {
     });
     
     const frontGeometry = new THREE.CylinderGeometry(1.21, 1.21, 0.31, 32);
+    frontGeometry.rotateX(Math.PI / 2);
     const frontSymbol = new THREE.Mesh(frontGeometry, symbolMaterial);
     scene.add(frontSymbol);
     
     const backGeometry = new THREE.CylinderGeometry(1.21, 1.21, 0.31, 32);
+    backGeometry.rotateX(Math.PI / 2);
     const backSymbol = new THREE.Mesh(backGeometry, symbolMaterial);
     backSymbol.rotation.y = Math.PI;
     scene.add(backSymbol);
