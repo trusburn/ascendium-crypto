@@ -157,9 +157,10 @@ export const Bitcoin3D = memo(() => {
   return (
     <div 
       ref={mountRef} 
-      className="flex items-center justify-center w-full max-w-[400px] h-[300px] sm:h-[400px] mx-auto gpu-accelerated"
+      className="flex items-center justify-center w-full h-[250px] sm:h-[300px] md:h-[350px] lg:h-[400px] mx-auto gpu-accelerated"
       style={{
         filter: 'drop-shadow(0 0 20px rgba(247, 147, 30, 0.5))',
+        maxWidth: '100%',
       }}
     />
   );
