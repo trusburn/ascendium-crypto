@@ -9,21 +9,25 @@ export const Bitcoin3D = memo(() => {
     if (!mountRef.current) return;
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, 400 / 400, 0.1, 1000);
+    const container = mountRef.current;
+    const width = container.clientWidth || 300;
+    const height = container.clientHeight || 300;
+    
+    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ 
       alpha: true, 
       antialias: true,
       powerPreference: 'high-performance',
     });
     
-    renderer.setSize(400, 400);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio for performance
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 0);
-    mountRef.current.appendChild(renderer.domElement);
+    container.appendChild(renderer.domElement);
 
-    // Create standing Bitcoin coin
-    const geometry = new THREE.CylinderGeometry(1.2, 1.2, 0.3, 32); // Reduced segments from 64 to 32
-    geometry.rotateX(0);
+    // Create VERTICAL standing Bitcoin coin (rotate X by 90° so it stands upright)
+    const geometry = new THREE.CylinderGeometry(1.2, 1.2, 0.3, 32);
+    geometry.rotateX(Math.PI / 2); // Stand the coin upright
     
     const material = new THREE.MeshPhongMaterial({
       color: 0xf7931e,
