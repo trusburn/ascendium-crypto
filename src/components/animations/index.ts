@@ -4,3 +4,4 @@ export { ScrollReveal } from './ScrollReveal';
 export { GlassmorphicCard } from './GlassmorphicCard';
 export { AnimatedCounter } from './AnimatedCounter';
 export { ParallaxLayer } from './ParallaxLayer';
+export { TextReveal } from './TextReveal';
